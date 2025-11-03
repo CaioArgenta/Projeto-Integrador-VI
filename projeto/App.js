@@ -1,7 +1,23 @@
-import { Text } from "react-native";
+import React from "react";
+import { NavigationContainer } from "@react-navigation/native";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
+
+import LoginScreen from "./screens/LoginScreen";
+import CrialoginScreen from "./screens/CrialoginScreen";
 import DashboardScreen from "./screens/DashboardScreen";
+import ResetsenhaScreen from "./screens/ResetsenhaScreen";
+
+const Stack = createNativeStackNavigator();
 
 export default function App() {
-  console.log("DashboardScreen:", DashboardScreen);
-  return <Text>Teste</Text>;
+  return (
+    <NavigationContainer>
+      <Stack.Navigator initialRouteName="Login">
+        <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="CriarConta" component={CrialoginScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="ResetsenhaScreen" component={ResetsenhaScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="Dashboard" component={DashboardScreen} options={{ headerShown: false }} />
+      </Stack.Navigator>
+    </NavigationContainer>
+  );
 }
