@@ -9,6 +9,7 @@ import ResetsenhaScreen from "./screens/ResetsenhaScreen";
 import MenuScreen from "./screens/MenuScreen";
 import FormMovimentacao from "./screens/FormMovimentacao";
 
+
 const Stack = createNativeStackNavigator();
 
 export default function App() {

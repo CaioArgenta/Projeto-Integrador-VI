@@ -1,20 +1,47 @@
 import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from "react-native";
-import { PieChart } from "recharts";
-import Svg, { Circle } from "react-native-svg";
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Dimensions } from "react-native";
+import { PieChart } from "react-native-chart-kit";
 import { Ionicons } from "@expo/vector-icons";
 
 export default function DashboardScreen() {
   const data = [
-    { name: "Fixas", value: 1000, color: "#3b82f6" },
-    { name: "Parceladas", value: 500, color: "#10b981" },
-    { name: "Variáveis", value: 484, color: "#facc15" },
-    { name: "Empréstimos", value: 484, color: "#f87171" },
+    {
+      name: "Fixas",
+      value: 1000,
+      color: "#3b82f6",
+      legendFontColor: "#333",
+      legendFontSize: 14,
+    },
+    {
+      name: "Parceladas",
+      value: 500,
+      color: "#10b981",
+      legendFontColor: "#333",
+      legendFontSize: 14,
+    },
+    {
+      name: "Variáveis",
+      value: 484,
+      color: "#facc15",
+      legendFontColor: "#333",
+      legendFontSize: 14,
+    },
+    {
+      name: "Empréstimos",
+      value: 484,
+      color: "#f87171",
+      legendFontColor: "#333",
+      legendFontSize: 14,
+    },
   ];
 
   const total = data.reduce((acc, cur) => acc + cur.value, 0);
+  const screenWidth = Dimensions.get("window").width;
 
   return (
+
+
+    
     <View style={styles.container}>
       {/* HEADER */}
       <View style={styles.header}>
@@ -26,15 +53,29 @@ export default function DashboardScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll}>
-        {/* CHART AREA */}
+        {/* CARD DO GRÁFICO */}
         <View style={styles.chartCard}>
           <Text style={styles.chartTitle}>Saídas Mensais</Text>
 
-          <View style={styles.chartWrapper}>
-            <Svg height="200" width="200" viewBox="0 0 200 200">
-              <Circle cx="100" cy="100" r="80" fill="#f4f4f4" />
-            </Svg>
-          </View>
+          {/* GRÁFICO DE PIZZA */}
+          <PieChart
+            data={data.map((item) => ({
+              name: item.name,
+              population: item.value,
+              color: item.color,
+              legendFontColor: "#333",
+              legendFontSize: 13,
+            }))}
+            width={screenWidth * 0.8}
+            height={180}
+            accessor={"population"}
+            backgroundColor={"transparent"}
+            paddingLeft={"20"}
+            absolute
+          />
+
+          {/* TOTAL CENTRAL */}
+          <Text style={styles.totalText}>Total: R$ {total.toFixed(2)}</Text>
 
           {/* LISTA DE CATEGORIAS */}
           {data.map((item, index) => (
@@ -65,6 +106,7 @@ export default function DashboardScreen() {
   );
 }
 
+// 🎨 ESTILOS
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -105,9 +147,12 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     marginBottom: 10,
   },
-  chartWrapper: {
-    alignItems: "center",
-    justifyContent: "center",
+  totalText: {
+    fontSize: 16,
+    fontWeight: "bold",
+    marginTop: 10,
+    marginBottom: 5,
+    color: "#13294b",
   },
   itemRow: {
     flexDirection: "row",
