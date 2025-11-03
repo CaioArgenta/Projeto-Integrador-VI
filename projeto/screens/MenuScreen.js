@@ -1,16 +1,18 @@
 import React from "react";
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from "react-native";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
 import { createDrawerNavigator } from "@react-navigation/drawer";
-import { useNavigation } from "@react-navigation/native"; // ✅ Import do hook
+import { useNavigation } from "@react-navigation/native";
+import { Ionicons } from "@expo/vector-icons"; // ✅ Import dos ícones
 
 import FormMovimentacao from "./FormMovimentacao";
 import PlanilhaMov from "./PlanilhaMov";
 import Configuracoes from "./Configuracoes";
+import NotificacoesScreen from "./NotificacoesScreen";
 
 const Drawer = createDrawerNavigator();
 
 function HomeMenu() {
-  const navigation = useNavigation(); // ✅ Hook para usar navigation
+  const navigation = useNavigation();
 
   const data = [
     { name: "Fixas", value: 1200, color: "#3b82f6" },
@@ -21,18 +23,36 @@ function HomeMenu() {
 
   const totalExpenses = data.reduce((acc, cur) => acc + cur.value, 0);
 
+  const historico = [
+    { id: 1, descricao: "💼 Salário recebido", valor: 3500, tipo: "entrada", data: "01/11/2025" },
+    { id: 2, descricao: "🛒 Supermercado", valor: 280, tipo: "saida", data: "02/11/2025" },
+    { id: 3, descricao: "⛽ Gasolina", valor: 120, tipo: "saida", data: "03/11/2025" },
+    { id: 4, descricao: "🎮 Assinatura Game Pass", valor: 49.9, tipo: "saida", data: "03/11/2025" },
+  ];
+
   return (
     <ScrollView style={styles.container}>
-      <Text style={styles.greeting}>👋 Olá, Lucas</Text>
-      <Text style={styles.subtitle}>Bem-vindo ao Grana+</Text>
+      {/* Topo: usuário e notificações */}
+      <View style={styles.topContainer}>
+        <View style={styles.userContainer}>
+          <Ionicons name="person-circle" size={36} color="#fff" /> {/* ⬅️ Ícone branco */}
+          <Text style={styles.userName}>LUCAS GABRIEL</Text>
+        </View>
+        <TouchableOpacity onPress={() => navigation.navigate("Notificações")}>
+          <Ionicons name="notifications" size={36} color="#fff" /> {/* ⬅️ Sino branco */}
+        </TouchableOpacity>
+      </View>
 
-      {/* Card de saldo total */}
+      {/* Logo */}
+      <Text style={styles.logo}>💰 Grana+</Text>
+
+      {/* Saldo */}
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Saldo Atual</Text>
         <Text style={styles.cardValue}>R$ 4.250,00</Text>
       </View>
 
-      {/* Card de despesas */}
+      {/* Despesas */}
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Despesas Mensais</Text>
         {data.map((item, index) => (
@@ -48,28 +68,25 @@ function HomeMenu() {
         </View>
       </View>
 
-      {/* Menu interativo */}
-      <View style={styles.menuContainer}>
-        <TouchableOpacity 
-          style={styles.menuButton}
-          onPress={() => navigation.navigate("Registrar Movimentação")}
-        >
-          <Text style={styles.menuText}>Registrar Movimentação</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={styles.menuButton}
-          onPress={() => navigation.navigate("Planilha de Movimentações")}
-        >
-          <Text style={styles.menuText}>Planilha de Movimentações</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={styles.menuButton} 
-          onPress={() => navigation.navigate("Configurações")}
-        >
-          <Text style={styles.menuText}>Configurações</Text>
-        </TouchableOpacity>
+      {/* Histórico */}
+      <View style={styles.historicoContainer}>
+        <Text style={styles.historicoTitulo}>📊 Histórico de Movimentações</Text>
+        {historico.map((mov) => (
+          <View key={mov.id} style={styles.historicoCard}>
+            <View style={styles.historicoInfo}>
+              <Text style={styles.historicoDesc}>{mov.descricao}</Text>
+              <Text style={styles.historicoData}>{mov.data}</Text>
+            </View>
+            <Text
+              style={[
+                styles.historicoValor,
+                { color: mov.tipo === "entrada" ? "#10b981" : "#f87171" },
+              ]}
+            >
+              {mov.tipo === "entrada" ? "+" : "-"}R$ {mov.valor.toFixed(2)}
+            </Text>
+          </View>
+        ))}
       </View>
     </ScrollView>
   );
@@ -93,14 +110,15 @@ export default function MenuScreen() {
       <Drawer.Screen name="Registrar Movimentação" component={FormMovimentacao} />
       <Drawer.Screen name="Planilha de Movimentações" component={PlanilhaMov} />
       <Drawer.Screen name="Configurações" component={Configuracoes} />
+      <Drawer.Screen name="Notificações" component={NotificacoesScreen} />
     </Drawer.Navigator>
   );
 }
 
 const styles = StyleSheet.create({
   drawer: {
-    backgroundColor: "#0e1a2b", 
-    width: 240, 
+    backgroundColor: "#0e1a2b",
+    width: 240,
     borderRightColor: "#3a6cf4",
     borderRightWidth: 1,
   },
@@ -121,16 +139,29 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#0e1a2b",
     paddingHorizontal: 20,
-    paddingTop: 60,
+    paddingTop: 40,
   },
-  greeting: {
+  topContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  userContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  userName: {
     color: "#fff",
-    fontSize: 24,
     fontWeight: "bold",
+    fontSize: 18,
+    marginLeft: 10,
   },
-  subtitle: {
-    color: "#aaa",
-    marginBottom: 20,
+  logo: {
+    fontSize: 28,
+    fontWeight: "bold",
+    color: "#3a6cf4",
+    marginVertical: 20,
+    textAlign: "center",
   },
   card: {
     backgroundColor: "#13294b",
@@ -178,18 +209,45 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     marginTop: 8,
   },
-  menuContainer: {
-    marginTop: 10,
-  },
-  menuButton: {
-    backgroundColor: "#3a6cf4",
+  historicoContainer: {
+    backgroundColor: "rgba(19, 41, 75, 0.9)",
+    borderRadius: 15,
     padding: 15,
-    borderRadius: 10,
-    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: "#3a6cf4",
+    marginBottom: 30,
   },
-  menuText: {
+  historicoTitulo: {
+    color: "#3a6cf4",
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 10,
+    textAlign: "center",
+  },
+  historicoCard: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#1b2b4a",
+    padding: 12,
+    borderRadius: 10,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: "rgba(58, 108, 244, 0.3)",
+  },
+  historicoInfo: {
+    flex: 1,
+  },
+  historicoDesc: {
     color: "#fff",
     fontWeight: "bold",
-    textAlign: "center",
+  },
+  historicoData: {
+    color: "#aaa",
+    fontSize: 12,
+  },
+  historicoValor: {
+    fontWeight: "bold",
+    fontSize: 16,
   },
 });
