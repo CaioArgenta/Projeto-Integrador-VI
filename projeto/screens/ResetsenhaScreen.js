@@ -17,7 +17,7 @@ export default function ResetsenhaScreen({ navigation }) {
       Alert.alert("Erro", "Digite seu e-mail");
       return;
     }
-    // Aqui você pode chamar a API de recuperação de senha
+
     Alert.alert(
       "Sucesso",
       `Um link de recuperação foi enviado para ${email}`

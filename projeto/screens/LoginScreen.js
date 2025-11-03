@@ -58,7 +58,6 @@ export default function LoginScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
-        {/* Esqueceu a senha centralizado */}
         <TouchableOpacity
           style={styles.forgotButton}
           onPress={() => navigation.navigate("ResetsenhaScreen")}

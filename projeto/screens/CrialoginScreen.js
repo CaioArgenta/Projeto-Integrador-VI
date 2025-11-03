@@ -27,9 +27,8 @@ export default function CrialoginScreen({ navigation }) {
       return;
     }
 
-    // Aqui você chamaria sua API de registro
     Alert.alert("Sucesso", "Conta criada com sucesso!");
-    navigation.goBack(); // volta para a tela de login
+    navigation.goBack();
   };
 
   return (
@@ -104,10 +103,7 @@ export default function CrialoginScreen({ navigation }) {
 
         <TouchableOpacity
           onPress={() => navigation.goBack()}
-          style={[
-            styles.createButton,
-            { marginTop: 10, backgroundColor: "transparent", borderColor: "#3a6cf4" },
-          ]}
+          style={[styles.createButton, { marginTop: 10, backgroundColor: "transparent", borderColor: "#3a6cf4" }]}
         >
           <Text style={[styles.createText, { color: "#3a6cf4" }]}>
             Voltar para Login

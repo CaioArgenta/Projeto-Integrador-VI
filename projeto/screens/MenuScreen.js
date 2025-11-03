@@ -1,8 +1,17 @@
 import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from "react-native";
+import { createDrawerNavigator } from "@react-navigation/drawer";
+import { useNavigation } from "@react-navigation/native"; // ✅ Import do hook
 
-export default function MenuScreen() {
-  // Exemplo de dados financeiros
+import FormMovimentacao from "./FormMovimentacao";
+import PlanilhaMov from "./PlanilhaMov";
+import Configuracoes from "./Configuracoes";
+
+const Drawer = createDrawerNavigator();
+
+function HomeMenu() {
+  const navigation = useNavigation(); // ✅ Hook para usar navigation
+
   const data = [
     { name: "Fixas", value: 1200, color: "#3b82f6" },
     { name: "Variáveis", value: 850, color: "#facc15" },
@@ -41,13 +50,24 @@ export default function MenuScreen() {
 
       {/* Menu interativo */}
       <View style={styles.menuContainer}>
-        <TouchableOpacity style={styles.menuButton}>
+        <TouchableOpacity 
+          style={styles.menuButton}
+          onPress={() => navigation.navigate("Registrar Movimentação")}
+        >
           <Text style={styles.menuText}>Registrar Movimentação</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.menuButton}>
+
+        <TouchableOpacity 
+          style={styles.menuButton}
+          onPress={() => navigation.navigate("Planilha de Movimentações")}
+        >
           <Text style={styles.menuText}>Planilha de Movimentações</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.menuButton}>
+
+        <TouchableOpacity 
+          style={styles.menuButton} 
+          onPress={() => navigation.navigate("Configurações")}
+        >
           <Text style={styles.menuText}>Configurações</Text>
         </TouchableOpacity>
       </View>
@@ -55,7 +75,48 @@ export default function MenuScreen() {
   );
 }
 
+export default function MenuScreen() {
+  return (
+    <Drawer.Navigator
+      initialRouteName="Início"
+      screenOptions={{
+        drawerStyle: styles.drawer,
+        drawerActiveTintColor: "#3a6cf4",
+        drawerInactiveTintColor: "#fff",
+        drawerLabelStyle: styles.drawerLabel,
+        headerStyle: styles.header,
+        headerTintColor: "#fff",
+        headerTitleStyle: styles.headerTitle,
+      }}
+    >
+      <Drawer.Screen name="Início" component={HomeMenu} />
+      <Drawer.Screen name="Registrar Movimentação" component={FormMovimentacao} />
+      <Drawer.Screen name="Planilha de Movimentações" component={PlanilhaMov} />
+      <Drawer.Screen name="Configurações" component={Configuracoes} />
+    </Drawer.Navigator>
+  );
+}
+
 const styles = StyleSheet.create({
+  drawer: {
+    backgroundColor: "#0e1a2b", 
+    width: 240, 
+    borderRightColor: "#3a6cf4",
+    borderRightWidth: 1,
+  },
+  drawerLabel: {
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  header: {
+    backgroundColor: "#13294b",
+    borderBottomWidth: 1,
+    borderBottomColor: "#3a6cf4",
+  },
+  headerTitle: {
+    fontWeight: "bold",
+    color: "#fff",
+  },
   container: {
     flex: 1,
     backgroundColor: "#0e1a2b",
