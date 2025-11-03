@@ -6,6 +6,7 @@ import LoginScreen from "./screens/LoginScreen";
 import CrialoginScreen from "./screens/CrialoginScreen";
 import DashboardScreen from "./screens/DashboardScreen";
 import ResetsenhaScreen from "./screens/ResetsenhaScreen";
+import MenuScreen from "./screens/MenuScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -17,6 +18,7 @@ export default function App() {
         <Stack.Screen name="CriarConta" component={CrialoginScreen} options={{ headerShown: false }} />
         <Stack.Screen name="ResetsenhaScreen" component={ResetsenhaScreen} options={{ headerShown: false }} />
         <Stack.Screen name="Dashboard" component={DashboardScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="Menu" component={MenuScreen} options={{ headerShown: false }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   ImageBackground,
-  Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -14,15 +13,6 @@ export default function LoginScreen({ navigation }) {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-
-  const handleLogin = () => {
-    if (!email || !password) {
-      Alert.alert("Erro", "Preencha e-mail e senha");
-      return;
-    }
-    // Aqui você pode adicionar a validação real com API
-    navigation.navigate("Dashboard"); // Navega para Dashboard
-  };
 
   return (
     <ImageBackground
@@ -68,19 +58,21 @@ export default function LoginScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
-        {/* Link Esqueceu a senha */}
+        {/* Esqueceu a senha centralizado */}
         <TouchableOpacity
+          style={styles.forgotButton}
           onPress={() => navigation.navigate("ResetsenhaScreen")}
         >
           <Text style={styles.forgotText}>Esqueceu a senha?</Text>
         </TouchableOpacity>
 
-        {/* Botão Entrar */}
-        <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
+        <TouchableOpacity
+          style={styles.loginButton}
+          onPress={() => navigation.navigate("Menu")}
+        >
           <Text style={styles.loginText}>Entrar</Text>
         </TouchableOpacity>
 
-        {/* Botão Criar Conta */}
         <TouchableOpacity
           style={styles.createButton}
           onPress={() => navigation.navigate("CriarConta")}
@@ -151,11 +143,12 @@ const styles = StyleSheet.create({
     position: "absolute",
     right: 10,
   },
+  forgotButton: {
+    marginBottom: 15,
+    alignSelf: "center",
+  },
   forgotText: {
     color: "#3a6cf4",
-    marginBottom: 15,
-    marginTop: 5,
-    alignSelf: "flex-end",
     fontWeight: "bold",
   },
   loginButton: {
