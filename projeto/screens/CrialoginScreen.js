@@ -103,7 +103,10 @@ export default function CrialoginScreen({ navigation }) {
 
         <TouchableOpacity
           onPress={() => navigation.goBack()}
-          style={[styles.createButton, { marginTop: 10, backgroundColor: "transparent", borderColor: "#3a6cf4" }]}
+          style={[
+            styles.createButton,
+            { marginTop: 10, backgroundColor: "transparent", borderColor: "#3a6cf4" },
+          ]}
         >
           <Text style={[styles.createText, { color: "#3a6cf4" }]}>
             Voltar para Login
@@ -144,6 +147,9 @@ const styles = StyleSheet.create({
     width: "85%",
     padding: 25,
     alignItems: "center",
+
+    // <<< este aqui resolve o teu problema:
+    marginTop: 120,
   },
   title: {
     color: "#fff",
