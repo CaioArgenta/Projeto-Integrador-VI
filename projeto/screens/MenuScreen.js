@@ -2,10 +2,13 @@ import React from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
 import { createDrawerNavigator } from "@react-navigation/drawer";
 import { useNavigation } from "@react-navigation/native";
+import { Ionicons } from "@expo/vector-icons";
 
 import FormMovimentacao from "./FormMovimentacao";
 import PlanilhaMov from "./PlanilhaMov";
 import Configuracoes from "./Configuracoes";
+import NotificacoesScreen from "./NotificacoesScreen";
+import DashboardScreen from "./DashboardScreen";
 
 const Drawer = createDrawerNavigator();
 
@@ -28,22 +31,41 @@ function HomeMenu() {
     { id: 4, descricao: "🎮 Assinatura Game Pass", valor: 49.9, tipo: "saida", data: "03/11/2025" },
   ];
 
+  const notificacoes = 3;
+
   return (
     <ScrollView style={styles.container}>
-      <Text style={styles.greeting}>👋 Olá, Lucas</Text>
-      <Text style={styles.subtitle}>Bem-vindo ao Grana+</Text>
+      {/* Header */}
+      <View style={styles.headerTop}>
+        <View style={styles.profileSection}>
+          <Ionicons name="person-circle-outline" size={48} color="#fff" />
+          <View>
+            <Text style={styles.greeting}>Olá, Lucas 👋</Text>
+            <Text style={styles.subtitle}>Bem-vindo ao Grana+</Text>
+          </View>
+        </View>
 
-      {/* Card de Saldo Total */}
+        <TouchableOpacity
+          style={styles.notificationContainer}
+          onPress={() => navigation.navigate("Notificações")}
+        >
+          <Ionicons name="notifications-outline" size={40} color="#fff" />
+          {notificacoes > 0 && (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{notificacoes}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+      </View>
+
+      {/* Card de Saldo */}
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Saldo Atual</Text>
         <Text style={styles.cardValue}>R$ 4.250,00</Text>
       </View>
 
-      {/* Card de Despesas Mensais - Clicável */}
-      <TouchableOpacity
-        style={styles.card}
-        onPress={() => navigation.navigate("Dashboard")}
-      >
+      {/* Card de Despesas Mensais */}
+      <View style={styles.card}>
         <Text style={styles.cardTitle}>Despesas Mensais</Text>
         {data.map((item, index) => (
           <View key={index} style={styles.itemRow}>
@@ -52,18 +74,22 @@ function HomeMenu() {
             <Text style={styles.itemValue}>R$ {item.value.toFixed(2)}</Text>
           </View>
         ))}
+
         <View style={styles.itemRowTotal}>
           <Text style={styles.itemLabel}>Total</Text>
           <Text style={styles.itemValue}>R$ {totalExpenses.toFixed(2)}</Text>
         </View>
 
         {/* Botão Visualizar Gráfico */}
-        <View style={styles.viewChartButton}>
+        <TouchableOpacity
+          style={styles.viewChartButton}
+          onPress={() => navigation.navigate("Dashboard")}
+        >
           <Text style={styles.viewChartText}>Visualizar Gráfico</Text>
-        </View>
-      </TouchableOpacity>
+        </TouchableOpacity>
+      </View>
 
-      {/* Histórico de Movimentações */}
+      {/* Histórico */}
       <View style={styles.historicoContainer}>
         <Text style={styles.historicoTitulo}>📊 Histórico de Movimentações</Text>
         {historico.map((mov) => (
@@ -92,11 +118,20 @@ export default function MenuScreen() {
     <Drawer.Navigator
       initialRouteName="Início"
       screenOptions={{
-        drawerStyle: { backgroundColor: "#0e1a2b", width: 240, borderRightColor: "#3a6cf4", borderRightWidth: 1 },
+        drawerStyle: {
+          backgroundColor: "#0e1a2b",
+          width: 240,
+          borderRightColor: "#3a6cf4",
+          borderRightWidth: 1,
+        },
         drawerActiveTintColor: "#3a6cf4",
         drawerInactiveTintColor: "#fff",
         drawerLabelStyle: { fontSize: 16, fontWeight: "bold" },
-        headerStyle: { backgroundColor: "#13294b", borderBottomWidth: 1, borderBottomColor: "#3a6cf4" },
+        headerStyle: {
+          backgroundColor: "#13294b",
+          borderBottomWidth: 1,
+          borderBottomColor: "#3a6cf4",
+        },
         headerTintColor: "#fff",
         headerTitleStyle: { fontWeight: "bold", color: "#fff" },
       }}
@@ -105,6 +140,8 @@ export default function MenuScreen() {
       <Drawer.Screen name="Registrar Movimentação" component={FormMovimentacao} />
       <Drawer.Screen name="Planilha de Movimentações" component={PlanilhaMov} />
       <Drawer.Screen name="Configurações" component={Configuracoes} />
+      <Drawer.Screen name="Notificações" component={NotificacoesScreen} />
+      <Drawer.Screen name="Dashboard" component={DashboardScreen} />
     </Drawer.Navigator>
   );
 }
@@ -114,16 +151,46 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#0e1a2b",
     paddingHorizontal: 20,
-    paddingTop: 40,
+    paddingTop: 30,
+  },
+  headerTop: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 25,
+  },
+  profileSection: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
   },
   greeting: {
     color: "#fff",
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: "bold",
   },
   subtitle: {
     color: "#aaa",
-    marginBottom: 20,
+    fontSize: 14,
+  },
+  notificationContainer: {
+    position: "relative",
+  },
+  badge: {
+    position: "absolute",
+    top: 2,
+    right: 2,
+    backgroundColor: "#f87171",
+    borderRadius: 10,
+    width: 18,
+    height: 18,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  badgeText: {
+    color: "#fff",
+    fontSize: 11,
+    fontWeight: "bold",
   },
   card: {
     backgroundColor: "#13294b",
@@ -173,14 +240,15 @@ const styles = StyleSheet.create({
   },
   viewChartButton: {
     marginTop: 10,
-    padding: 8,
-    borderRadius: 5,
+    padding: 10,
+    borderRadius: 8,
     backgroundColor: "#3b82f6",
   },
   viewChartText: {
     color: "#fff",
     fontWeight: "bold",
     textAlign: "center",
+    fontSize: 16,
   },
   historicoContainer: {
     backgroundColor: "rgba(19, 41, 75, 0.9)",
