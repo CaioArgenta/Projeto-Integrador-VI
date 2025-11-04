@@ -1,3 +1,4 @@
+// DashboardScreen.js
 import React, { useState, useEffect } from "react";
 import {
   View,
@@ -14,6 +15,7 @@ import { useNavigation } from "@react-navigation/native";
 export default function DashboardScreen() {
   const navigation = useNavigation();
   const [screenWidth, setScreenWidth] = useState(Dimensions.get("window").width);
+  const [selectedCategory, setSelectedCategory] = useState(null);
 
   useEffect(() => {
     const subscription = Dimensions.addEventListener("change", ({ window }) => {
@@ -34,11 +36,24 @@ export default function DashboardScreen() {
   const total = data.reduce((acc, cur) => acc + cur.value, 0);
 
   const handlePress = (tipo) => {
-    navigation.navigate("Planilha de Movimentações", { tipo });
+    console.log("Botão clicado:", tipo);
+    setSelectedCategory(tipo);
+
+    if (tipo === "Parceladas") {
+      console.log("Navegando para Telaparcelas");
+      navigation.navigate("Telaparcelas");
+    } else {
+      console.log("Navegando para Planilha de Movimentações");
+      navigation.navigate("Planilha de Movimentações", { tipo });
+    }
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView
+      contentContainerStyle={styles.container}
+      keyboardShouldPersistTaps="handled"
+    >
+      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={28} color="#fff" />
@@ -47,11 +62,11 @@ export default function DashboardScreen() {
         <View style={{ width: 28 }} />
       </View>
 
+      {/* Gráfico */}
       <View style={styles.chartCard}>
         <Text style={styles.chartTitle}>Despesas Mensais</Text>
 
         <View style={styles.chartColumn}>
-          {/* === Gráfico Centralizado === */}
           <View style={styles.chartCenter}>
             <PieChart
               data={data.map((item) => ({
@@ -73,11 +88,11 @@ export default function DashboardScreen() {
               backgroundColor={"transparent"}
               hasLegend={false}
               paddingLeft={"0"}
-              center={[chartWidth / 8, 0]} // centraliza o gráfico
+              center={[chartWidth / 8, 0]}
             />
           </View>
 
-          {/* === Legenda === */}
+          {/* Legenda */}
           <View style={styles.legendContainer}>
             {data.map((item, index) => {
               const percent = (item.value / total) * 100;
@@ -98,11 +113,15 @@ export default function DashboardScreen() {
         <Text style={styles.totalText}>Total: R$ {total.toFixed(2)}</Text>
       </View>
 
+      {/* Categorias */}
       <View style={styles.categoryContainer}>
         {data.map((item, index) => (
           <TouchableOpacity
             key={index}
-            style={styles.categoryCard}
+            style={[
+              styles.categoryCard,
+              selectedCategory === item.name && styles.categoryCardSelected,
+            ]}
             onPress={() => handlePress(item.name)}
             activeOpacity={0.8}
           >
@@ -210,6 +229,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderWidth: 1,
     borderColor: "#3a6cf4",
+  },
+  categoryCardSelected: {
+    borderColor: "#10b981",
+    borderWidth: 2,
+    backgroundColor: "#1b3a5a",
   },
   categoryLeft: {
     flexDirection: "row",

@@ -1,223 +1,373 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
-  StyleSheet,
-  TouchableOpacity,
-  FlatList,
   ScrollView,
-  Dimensions,
+  TouchableOpacity,
+  Modal,
+  TextInput,
 } from "react-native";
+import { AntDesign, Feather } from "@expo/vector-icons";
+
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 
-const parceladasData = [
-  {
-    id: "1",
-    valor: 265,
-    produto: "Produto X",
-    parcela: "1/12",
-    banco: "Banco Itaú",
-    pago: true,
-    dataVencimento: "2025-10-01",
-    dataPagamento: "2025-10-01",
-  },
-  {
-    id: "2",
-    valor: 950,
-    produto: "Empréstimo",
-    parcela: "3/12",
-    banco: "NuBank",
-    pago: false,
-    dataVencimento: "2025-11-01",
-    dataPagamento: null,
-  },
-];
+export default function TabelaParcelas() {
+  const [modalVisible, setModalVisible] = useState(false);
+  const [valorInput, setValorInput] = useState("");
 
-export default function Telaparcelas() {
-  const navigation = useNavigation();
-  const today = new Date();
-
-  const renderItem = ({ item }) => {
-    const vencimento = new Date(item.dataVencimento);
-    const statusPago = item.pago;
-    const statusAtraso = !statusPago && vencimento < today;
-
-    return (
-      <View style={styles.row}>
-        <Text style={styles.cell}>R$ {item.valor.toFixed(2)}</Text>
-        <Text style={styles.cell}>{item.parcela}</Text>
-        <Text style={styles.cell}>{item.produto}</Text>
-        <Text style={styles.cell}>{item.banco}</Text>
-        <Text
-          style={[
-            styles.cell,
-            statusPago
-              ? styles.pago
-              : statusAtraso
-              ? styles.atraso
-              : styles.naoPago,
-          ]}
-        >
-          {statusPago ? "Pago" : statusAtraso ? "Atraso" : "Não pago"}
-        </Text>
-        <Text style={styles.cell}>
-          {item.dataVencimento}
-        </Text>
-        <Text style={styles.cell}>
-          {item.dataPagamento ? item.dataPagamento : "-"}
-        </Text>
-      </View>
-    );
+  const COL_WIDTH = {
+    valor: 160,
+    parcela: 130,
+    produto: 260,
+    banco: 200,
+    status: 160,
+    vencimento: 200,
+    pagamento: 200,
+    acoes: 150,
   };
 
+  const dadosOriginais = [
+    {
+      id: 1,
+      valor: "R$ 1.200,00",
+      parcela: "2/6",
+      produto: "Notebook Dell",
+      banco: "Nubank",
+      status: "Pago",
+      vencimento: "12/11/2025",
+      pagamento: "11/11/2025",
+    },
+    {
+      id: 2,
+      valor: "R$ 300,00",
+      parcela: "1/3",
+      produto: "Mouse Gamer",
+      banco: "Santander",
+      status: "Aberto",
+      vencimento: "05/12/2025",
+      pagamento: "-",
+    },
+    // pode adicionar mais exemplos aqui
+  ];
+
+  // estado local (poderíamos migrar pra useState se for editável)
+  const [dados, setDados] = useState(dadosOriginais);
+
+  const navigation = useNavigation();
+
+  // ----------------------------
+  // MÊS / ANO SELETOR E FILTRO
+  // ----------------------------
+  const hoje = new Date();
+  const [mesAtual, setMesAtual] = useState(hoje.getMonth()); // 0-11
+  const [anoAtual, setAnoAtual] = useState(hoje.getFullYear());
+
+  function irParaMesAnterior() {
+    if (mesAtual === 0) {
+      setMesAtual(11);
+      setAnoAtual((a) => a - 1);
+    } else {
+      setMesAtual((m) => m - 1);
+    }
+  }
+  function irParaProximoMes() {
+    if (mesAtual === 11) {
+      setMesAtual(0);
+      setAnoAtual((a) => a + 1);
+    } else {
+      setMesAtual((m) => m + 1);
+    }
+  }
+
+  // Converte "dd/mm/yyyy" para Date (meia-noite local)
+  function parseDateDDMMYYYY(str) {
+    if (!str) return null;
+    const parts = String(str).split("/");
+    if (parts.length !== 3) return null;
+    const [dd, mm, yyyy] = parts;
+    const d = new Date(Number(yyyy), Number(mm) - 1, Number(dd));
+    if (isNaN(d.getTime())) return null;
+    return d;
+  }
+
+  // filtra pela data de vencimento (mês/ano selecionado)
+  const dadosFiltrados = dados.filter((item) => {
+    const d = parseDateDDMMYYYY(item.vencimento);
+    if (!d) return false;
+    return d.getMonth() === mesAtual && d.getFullYear() === anoAtual;
+  });
+
+  // ----------------------------
+  // LÓGICA DE CORES DO STATUS
+  // ----------------------------
+  function corDoStatus(item) {
+    const statusNormalized = String(item.status ?? "").trim().toLowerCase();
+    if (statusNormalized === "pago") return "#10b981"; // verde
+    // se não pago, checar vencimento (se vencimento < hoje => atrasado)
+    const venc = parseDateDDMMYYYY(item.vencimento);
+    if (venc && venc < new Date(new Date().toDateString())) {
+      // comparando apenas data (sem hora) — cria Date com toDateString para zerar hora
+      return "#f87171"; // vermelho
+    }
+    return "#3b82f6"; // azul (aberto)
+  }
+
+  // ----------------------------
+  // Render
+  // ----------------------------
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.userInfo}>
-          <Ionicons name="person-circle-outline" size={36} color="#fff" />
-          <Text style={styles.userName}>Lucas Gabriel</Text>
-        </View>
-        <Ionicons name="notifications-outline" size={28} color="#fff" />
+    <View style={{ flex: 1, backgroundColor: "#0e1a2b", paddingTop: 40 }}>
+      {/* Back button */}
+      <TouchableOpacity
+        onPress={() => navigation.goBack()}
+        style={{ padding: 14 }}
+      >
+        <Ionicons name="arrow-back" size={28} color="#fff" />
+      </TouchableOpacity>
+
+      {/* Mês/Ano selector */}
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "center",
+          marginBottom: 12,
+        }}
+      >
+        <TouchableOpacity onPress={irParaMesAnterior}>
+          <AntDesign name="left" size={26} color="#fff" />
+        </TouchableOpacity>
+
+        <Text
+          style={{
+            color: "#fff",
+            fontSize: 22,
+            fontWeight: "bold",
+            marginHorizontal: 14,
+          }}
+        >
+          {String(mesAtual + 1).padStart(2, "0")} / {anoAtual}
+        </Text>
+
+        <TouchableOpacity onPress={irParaProximoMes}>
+          <AntDesign name="right" size={26} color="#fff" />
+        </TouchableOpacity>
       </View>
 
-      <Text style={styles.title}>Parceladas</Text>
-
-      {/* Tabela */}
-      <ScrollView horizontal style={{ width: "100%" }}>
+      {/* Tabela com scroll horizontal */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         <View>
-          <View style={styles.tableHeader}>
-            <Text style={styles.headerCell}>Valor</Text>
-            <Text style={styles.headerCell}>Parcela</Text>
-            <Text style={styles.headerCell}>Produto</Text>
-            <Text style={styles.headerCell}>Banco</Text>
-            <Text style={styles.headerCell}>Status</Text>
-            <Text style={styles.headerCell}>Vencimento</Text>
-            <Text style={styles.headerCell}>Pagamento</Text>
+          {/* HEADER */}
+          <View
+            style={{
+              flexDirection: "row",
+              backgroundColor: "#13294b",
+              paddingVertical: 10,
+            }}
+          >
+            <Text style={[styles.headerCell, { width: COL_WIDTH.valor }]}>
+              Valor
+            </Text>
+            <Text style={[styles.headerCell, { width: COL_WIDTH.parcela }]}>
+              Parcela
+            </Text>
+            <Text style={[styles.headerCell, { width: COL_WIDTH.produto }]}>
+              Produto
+            </Text>
+            <Text style={[styles.headerCell, { width: COL_WIDTH.banco }]}>
+              Banco
+            </Text>
+            <Text style={[styles.headerCell, { width: COL_WIDTH.status }]}>
+              Status
+            </Text>
+            <Text style={[styles.headerCell, { width: COL_WIDTH.vencimento }]}>
+              Vencimento
+            </Text>
+            <Text style={[styles.headerCell, { width: COL_WIDTH.pagamento }]}>
+              Pagamento
+            </Text>
+            <Text style={[styles.headerCell, { width: COL_WIDTH.acoes }]}>
+              Ações
+            </Text>
           </View>
-          <FlatList
-            data={parceladasData}
-            renderItem={renderItem}
-            keyExtractor={(item) => item.id}
-          />
+
+          {/* LINHAS (filtradas por mês/ano) */}
+          {dadosFiltrados.length === 0 ? (
+            <View
+              style={{
+                padding: 20,
+                backgroundColor: "#1b2b4a",
+                marginTop: 8,
+                borderRadius: 8,
+              }}
+            >
+              <Text style={{ color: "#fff", textAlign: "center" }}>
+                Nenhuma parcela encontrada neste mês.
+              </Text>
+            </View>
+          ) : (
+            dadosFiltrados.map((item) => (
+              <View
+                key={item.id}
+                style={{
+                  flexDirection: "row",
+                  paddingVertical: 12,
+                  backgroundColor: "#1b2b4a",
+                  marginBottom: 4,
+                }}
+              >
+                <Text style={[styles.cell, { width: COL_WIDTH.valor }]}>
+                  {item.valor}
+                </Text>
+                <Text style={[styles.cell, { width: COL_WIDTH.parcela }]}>
+                  {item.parcela}
+                </Text>
+                <Text style={[styles.cell, { width: COL_WIDTH.produto }]}>
+                  {item.produto}
+                </Text>
+                <Text style={[styles.cell, { width: COL_WIDTH.banco }]}>
+                  {item.banco}
+                </Text>
+
+                {/* Status com cor dinâmica */}
+                <Text
+                  style={[
+                    styles.cell,
+                    { width: COL_WIDTH.status, color: corDoStatus(item) },
+                  ]}
+                >
+                  {item.status}
+                </Text>
+
+                <Text style={[styles.cell, { width: COL_WIDTH.vencimento }]}>
+                  {item.vencimento}
+                </Text>
+                <Text style={[styles.cell, { width: COL_WIDTH.pagamento }]}>
+                  {item.pagamento}
+                </Text>
+
+                <View
+                  style={{
+                    width: COL_WIDTH.acoes,
+                    flexDirection: "row",
+                    justifyContent: "center",
+                    gap: 14,
+                  }}
+                >
+                  <TouchableOpacity>
+                    <Feather name="edit" size={22} color="#fff" />
+                  </TouchableOpacity>
+                  <TouchableOpacity>
+                    <AntDesign name="delete" size={22} color="#fff" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))
+          )}
         </View>
       </ScrollView>
 
-      {/* Total */}
-      <Text style={styles.total}>
-        Total: R$ {parceladasData.reduce((acc, cur) => acc + cur.valor, 0).toFixed(2)}
-      </Text>
+      {/* Floating add button */}
+      <TouchableOpacity
+        onPress={() => setModalVisible(true)}
+        style={{
+          position: "absolute",
+          right: 20,
+          bottom: 30,
+          backgroundColor: "#007bff",
+          padding: 18,
+          borderRadius: 40,
+        }}
+      >
+        <AntDesign name="plus" size={26} color="#fff" />
+      </TouchableOpacity>
 
-      {/* Footer */}
-      <View style={styles.footer}>
-        <TouchableOpacity style={styles.button}>
-          <Text style={styles.buttonText}>Registrar Movimentação</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.button}>
-          <Text style={styles.buttonText}>Planilha de Movimentações</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.button}>
-          <Text style={styles.buttonText}>Configurações</Text>
-        </TouchableOpacity>
-      </View>
+      {/* MODAL */}
+      <Modal transparent visible={modalVisible} animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text
+              style={{
+                color: "#fff",
+                fontSize: 20,
+                fontWeight: "bold",
+                marginBottom: 18,
+              }}
+            >
+              Adicionar Parcela
+            </Text>
+
+            <TextInput
+              style={styles.input}
+              placeholder="Valor"
+              placeholderTextColor="#888"
+              value={valorInput}
+              onChangeText={setValorInput}
+            />
+
+            <TouchableOpacity
+              onPress={() => setModalVisible(false)}
+              style={{
+                backgroundColor: "#007bff",
+                padding: 14,
+                borderRadius: 8,
+                marginTop: 14,
+              }}
+            >
+              <Text
+                style={{ color: "#fff", textAlign: "center", fontWeight: "bold" }}
+              >
+                Salvar
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => setModalVisible(false)}
+              style={{ padding: 14, marginTop: 10 }}
+            >
+              <Text style={{ color: "#ccc", textAlign: "center" }}>
+                Cancelar
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#0e1a2b",
-    alignItems: "center",
-    paddingVertical: 20,
-    paddingHorizontal: 10,
-  },
-  header: {
-    width: "100%",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  userInfo: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  userName: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  title: {
-    color: "#fff",
-    fontSize: 22,
-    fontWeight: "bold",
-    marginBottom: 15,
-  },
-  tableHeader: {
-    flexDirection: "row",
-    backgroundColor: "#13294b",
-    paddingVertical: 10,
-    paddingHorizontal: 5,
-  },
+const styles = {
   headerCell: {
     color: "#fff",
     fontWeight: "bold",
-    width: 120,
     textAlign: "center",
-  },
-  row: {
-    flexDirection: "row",
-    backgroundColor: "#1b2b4a",
-    marginBottom: 2,
-    paddingVertical: 10,
-    paddingHorizontal: 5,
+    fontSize: 16,
   },
   cell: {
     color: "#fff",
-    width: 120,
     textAlign: "center",
-  },
-  pago: {
-    color: "#10b981",
-    fontWeight: "bold",
-  },
-  atraso: {
-    color: "#f87171",
-    fontWeight: "bold",
-  },
-  naoPago: {
-    color: "#facc15",
-    fontWeight: "bold",
-  },
-  total: {
-    color: "#3b82f6",
     fontSize: 16,
-    fontWeight: "bold",
-    marginTop: 15,
   },
-  footer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    width: "100%",
-    marginTop: 25,
-    gap: 5,
-  },
-  button: {
+  modalOverlay: {
     flex: 1,
-    backgroundColor: "#13294b",
-    padding: 10,
-    borderRadius: 10,
+    backgroundColor: "rgba(0,0,0,0.65)",
+    justifyContent: "center",
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#3a6cf4",
   },
-  buttonText: {
+  modalContent: {
+    backgroundColor: "#13294b",
+    width: "85%",
+    padding: 20,
+    borderRadius: 12,
+  },
+  input: {
+    backgroundColor: "#111",
     color: "#fff",
-    fontWeight: "bold",
-    fontSize: 14,
-    textAlign: "center",
+    borderWidth: 1,
+    borderColor: "#333",
+    padding: 12,
+    borderRadius: 8,
+    fontSize: 16,
   },
-});
+};
