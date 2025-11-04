@@ -14,17 +14,16 @@ export default function DashboardScreen() {
     { name: "Empréstimos", value: 400, color: "#f87171" },
   ];
 
-  const screenWidth = Dimensions.get("window").width - 40;
   const total = data.reduce((acc, cur) => acc + cur.value, 0);
+  const screenWidth = Dimensions.get("window").width;
 
   const handlePress = (tipo) => {
-    // Aqui você pode futuramente mandar pra uma tela específica com os detalhes
     navigation.navigate("Planilha de Movimentações", { tipo });
   };
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      {/* Header */}
+      {/* HEADER */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={28} color="#fff" />
@@ -33,34 +32,36 @@ export default function DashboardScreen() {
         <View style={{ width: 28 }} />
       </View>
 
-      {/* Gráfico */}
+      {/* CARD DO GRÁFICO */}
       <View style={styles.chartCard}>
         <Text style={styles.chartTitle}>Despesas Mensais</Text>
 
-        <PieChart
-          data={data.map((item) => ({
-            name: item.name,
-            population: item.value,
-            color: item.color,
-            legendFontColor: "#fff",
-            legendFontSize: 14,
-          }))}
-          width={screenWidth}
-          height={220}
-          chartConfig={{
-            color: () => "#fff",
-            labelColor: () => "#fff",
-          }}
-          accessor={"population"}
-          backgroundColor={"transparent"}
-          paddingLeft={"20"}
-          absolute
-        />
+        {/* Gráfico centralizado */}
+        <View style={styles.chartWrapper}>
+          <PieChart
+            data={data.map((item) => ({
+              name: item.name,
+              population: item.value,
+              color: item.color,
+              legendFontColor: "#fff",
+              legendFontSize: 14,
+            }))}
+            width={screenWidth * 0.85}
+            height={220}
+            chartConfig={{
+              color: () => "#fff",
+              labelColor: () => "#fff",
+            }}
+            accessor={"population"}
+            backgroundColor={"transparent"}
+            absolute
+          />
+        </View>
 
         <Text style={styles.totalText}>Total: R$ {total.toFixed(2)}</Text>
       </View>
 
-      {/* Lista clicável de categorias */}
+      {/* LISTA DE CATEGORIAS CLICÁVEIS */}
       <View style={styles.categoryContainer}>
         {data.map((item, index) => (
           <TouchableOpacity
@@ -107,24 +108,32 @@ const styles = StyleSheet.create({
   chartCard: {
     backgroundColor: "#13294b",
     borderRadius: 15,
-    padding: 20,
+    paddingVertical: 25,
+    paddingHorizontal: 10,
     alignItems: "center",
     width: "90%",
     borderWidth: 1,
     borderColor: "#3a6cf4",
-    marginBottom: 20,
+    marginBottom: 25,
   },
   chartTitle: {
     color: "#fff",
     fontSize: 18,
     fontWeight: "bold",
-    marginBottom: 20,
+    marginBottom: 10,
+    textAlign: "center",
+  },
+  chartWrapper: {
+    alignItems: "center",
+    justifyContent: "center",
+    width: "100%",
+    marginVertical: 10,
   },
   totalText: {
     color: "#3b82f6",
     fontSize: 16,
     fontWeight: "bold",
-    marginTop: 20,
+    marginTop: 10,
   },
   categoryContainer: {
     width: "90%",
