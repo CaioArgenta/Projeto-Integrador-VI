@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -13,6 +13,14 @@ import { useNavigation } from "@react-navigation/native";
 
 export default function DashboardScreen() {
   const navigation = useNavigation();
+  const [screenWidth, setScreenWidth] = useState(Dimensions.get("window").width);
+
+  useEffect(() => {
+    const subscription = Dimensions.addEventListener("change", ({ window }) => {
+      setScreenWidth(window.width);
+    });
+    return () => subscription?.remove();
+  }, []);
 
   const data = [
     { name: "Fixas", value: 1200, color: "#3b82f6" },
@@ -21,8 +29,9 @@ export default function DashboardScreen() {
     { name: "Empréstimos", value: 400, color: "#f87171" },
   ];
 
+  const maxChartWidth = 250;
+  const chartWidth = Math.min(screenWidth * 0.5, maxChartWidth);
   const total = data.reduce((acc, cur) => acc + cur.value, 0);
-  const screenWidth = Dimensions.get("window").width;
 
   const handlePress = (tipo) => {
     navigation.navigate("Planilha de Movimentações", { tipo });
@@ -41,21 +50,34 @@ export default function DashboardScreen() {
       <View style={styles.chartCard}>
         <Text style={styles.chartTitle}>Despesas Mensais</Text>
 
-        <View style={styles.chartRow}>
-          <PieChart
-            data={data.map((item) => ({
-              name: item.name,
-              population: item.value,
-              color: item.color,
-            }))}
-            width={150}
-            height={150}
-            chartConfig={{ color: () => "#fff" }}
-            accessor={"population"}
-            backgroundColor={"transparent"}
-            hasLegend={false}
-          />
+        <View style={styles.chartColumn}>
+          {/* === Gráfico Centralizado === */}
+          <View style={styles.chartCenter}>
+            <PieChart
+              data={data.map((item) => ({
+                name: item.name,
+                population: item.value,
+                color: item.color,
+                legendFontColor: "#fff",
+                legendFontSize: 12,
+              }))}
+              width={chartWidth}
+              height={220}
+              chartConfig={{
+                backgroundColor: "transparent",
+                backgroundGradientFrom: "#13294b",
+                backgroundGradientTo: "#13294b",
+                color: () => "#fff",
+              }}
+              accessor={"population"}
+              backgroundColor={"transparent"}
+              hasLegend={false}
+              paddingLeft={"0"}
+              center={[chartWidth / 8, 0]} // centraliza o gráfico
+            />
+          </View>
 
+          {/* === Legenda === */}
           <View style={styles.legendContainer}>
             {data.map((item, index) => {
               const percent = (item.value / total) * 100;
@@ -123,28 +145,36 @@ const styles = StyleSheet.create({
   chartCard: {
     backgroundColor: "#13294b",
     borderRadius: 15,
-    paddingVertical: 25,
-    paddingHorizontal: 10,
-    alignItems: "center",
+    paddingVertical: 20,
+    paddingHorizontal: 20,
     width: "90%",
     borderWidth: 1,
     borderColor: "#3a6cf4",
     marginBottom: 25,
+    overflow: "visible",
   },
   chartTitle: {
     color: "#fff",
     fontSize: 18,
     fontWeight: "bold",
-    marginBottom: 15,
+    marginBottom: 10,
   },
-  chartRow: {
+  chartColumn: {
+    width: "100%",
     flexDirection: "row",
-    justifyContent: "center",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 6,
+  },
+  chartCenter: {
+    width: "50%",
     alignItems: "center",
-    marginBottom: 15,
+    justifyContent: "center",
   },
   legendContainer: {
-    marginLeft: 20,
+    flex: 1,
+    paddingHorizontal: 6,
+    marginTop: 10,
   },
   legendItem: {
     flexDirection: "row",
@@ -165,7 +195,7 @@ const styles = StyleSheet.create({
     color: "#3b82f6",
     fontSize: 16,
     fontWeight: "bold",
-    marginTop: 5,
+    marginTop: 8,
   },
   categoryContainer: {
     width: "90%",
