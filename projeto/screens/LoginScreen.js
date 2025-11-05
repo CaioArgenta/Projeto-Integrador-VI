@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
   View,
   Text,
@@ -6,13 +6,54 @@ import {
   TouchableOpacity,
   StyleSheet,
   ImageBackground,
+  ActivityIndicator,
+  Keyboard,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { auth } from "../firebaseConfig";
 
 export default function LoginScreen({ navigation }) {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  // Referência ao campo de senha
+  const passwordInputRef = useRef(null);
+
+  const handleLogin = async () => {
+    Keyboard.dismiss();
+
+    if (!email || !password) {
+      setErrorMessage("Preencha todos os campos!");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setErrorMessage("");
+      await signInWithEmailAndPassword(auth, email, password);
+      setLoading(false);
+      navigation.navigate("Menu");
+    } catch (error) {
+      setLoading(false);
+      console.log("Erro Firebase:", error.code);
+
+      if (error.code === "auth/user-not-found") {
+        setErrorMessage("E-mail não cadastrado!");
+      } else if (error.code === "auth/wrong-password") {
+        setErrorMessage("Senha incorreta!");
+      } else if (error.code === "auth/invalid-email") {
+        setErrorMessage("E-mail inválido!");
+      } else if (error.code === "auth/too-many-requests") {
+        setErrorMessage("Muitas tentativas. Tente mais tarde!");
+      } else {
+        setErrorMessage("Erro ao fazer login. Tente novamente.");
+      }
+    }
+  };
 
   return (
     <ImageBackground
@@ -35,16 +76,26 @@ export default function LoginScreen({ navigation }) {
           style={styles.input}
           value={email}
           onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          returnKeyType="next"
+          blurOnSubmit={false}
+          onSubmitEditing={() => {
+            passwordInputRef.current?.focus();
+          }}
         />
 
         <View style={styles.passwordContainer}>
           <TextInput
+            ref={passwordInputRef}
             placeholder="Senha"
             placeholderTextColor="#aaa"
             secureTextEntry={!showPassword}
             style={[styles.input, { flex: 1, marginBottom: 0 }]}
             value={password}
             onChangeText={setPassword}
+            returnKeyType="done"
+            onSubmitEditing={handleLogin} // Enter chama login
           />
           <TouchableOpacity
             onPress={() => setShowPassword(!showPassword)}
@@ -53,7 +104,7 @@ export default function LoginScreen({ navigation }) {
             <Ionicons
               name={showPassword ? "eye-off" : "eye"}
               size={22}
-              color="#aaa"
+              color="#555"
             />
           </TouchableOpacity>
         </View>
@@ -65,11 +116,23 @@ export default function LoginScreen({ navigation }) {
           <Text style={styles.forgotText}>Esqueceu a senha?</Text>
         </TouchableOpacity>
 
+        {/* Mensagem de erro acima do botão Entrar */}
+        {errorMessage ? (
+          <View style={styles.messageBox}>
+            <Text style={styles.errorMessage}>{errorMessage}</Text>
+          </View>
+        ) : null}
+
         <TouchableOpacity
           style={styles.loginButton}
-          onPress={() => navigation.navigate("Menu")}
+          onPress={handleLogin}
+          disabled={loading}
         >
-          <Text style={styles.loginText}>Entrar</Text>
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.loginText}>Entrar</Text>
+          )}
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -113,6 +176,7 @@ const styles = StyleSheet.create({
     width: "85%",
     padding: 25,
     alignItems: "center",
+    position: "relative",
   },
   title: {
     color: "#fff",
@@ -149,6 +213,18 @@ const styles = StyleSheet.create({
   forgotText: {
     color: "#3a6cf4",
     fontWeight: "bold",
+  },
+  messageBox: {
+    marginBottom: 10,
+    backgroundColor: "rgba(255, 77, 77, 0.9)",
+    width: "100%",
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+  errorMessage: {
+    color: "#fff",
+    fontWeight: "bold",
+    textAlign: "center",
   },
   loginButton: {
     backgroundColor: "#3a6cf4",

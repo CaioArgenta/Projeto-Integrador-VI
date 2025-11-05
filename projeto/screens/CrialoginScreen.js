@@ -6,9 +6,11 @@ import {
   TouchableOpacity,
   StyleSheet,
   ImageBackground,
-  Alert,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
+import { auth } from "../firebaseConfig";
 
 export default function CrialoginScreen({ navigation }) {
   const [showPassword, setShowPassword] = useState(false);
@@ -16,19 +18,51 @@ export default function CrialoginScreen({ navigation }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState(""); // "error" | "success"
 
-  const handleCreateAccount = () => {
+  const handleCreateAccount = async () => {
+    setMessage("");
+    setMessageType("");
+
     if (!name || !email || !password || !confirmPassword) {
-      Alert.alert("Erro", "Preencha todos os campos!");
+      setMessage("Preencha todos os campos!");
+      setMessageType("error");
       return;
     }
     if (password !== confirmPassword) {
-      Alert.alert("Erro", "As senhas não coincidem!");
+      setMessage("As senhas não coincidem!");
+      setMessageType("error");
       return;
     }
 
-    Alert.alert("Sucesso", "Conta criada com sucesso!");
-    navigation.goBack();
+    try {
+      setLoading(true);
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      await updateProfile(userCredential.user, { displayName: name });
+
+      setLoading(false);
+      setMessage("Conta criada com sucesso! Agora você pode fazer login.");
+      setMessageType("success");
+
+      setTimeout(() => navigation.goBack(), 2000);
+    } catch (error) {
+      setLoading(false);
+      console.log("Erro Firebase:", error.code);
+
+      let msg = "Ocorreu um erro ao criar a conta.";
+      if (error.code === "auth/weak-password") {
+        msg = "A senha deve ter pelo menos 6 caracteres.";
+      } else if (error.code === "auth/email-already-in-use") {
+        msg = "Esse e-mail já está cadastrado. Tente outro.";
+      } else if (error.code === "auth/invalid-email") {
+        msg = "E-mail inválido. Digite um e-mail válido.";
+      }
+
+      setMessage(msg);
+      setMessageType("error");
+    }
   };
 
   return (
@@ -42,12 +76,10 @@ export default function CrialoginScreen({ navigation }) {
 
       <View style={styles.card}>
         <Text style={styles.title}>Criar Conta</Text>
-        <Text style={styles.subtitle}>
-          Preencha seus dados para criar sua conta
-        </Text>
+        <Text style={styles.subtitle}>Preencha seus dados para continuar</Text>
 
         <TextInput
-          placeholder="Nome"
+          placeholder="Nome completo"
           placeholderTextColor="#aaa"
           style={styles.input}
           value={name}
@@ -80,7 +112,7 @@ export default function CrialoginScreen({ navigation }) {
             <Ionicons
               name={showPassword ? "eye-off" : "eye"}
               size={22}
-              color="#aaa"
+              color="#555"
             />
           </TouchableOpacity>
         </View>
@@ -94,23 +126,37 @@ export default function CrialoginScreen({ navigation }) {
           onChangeText={setConfirmPassword}
         />
 
+        {/* Mensagem no estilo do login (caixinha colorida) */}
+        {message ? (
+          <View
+            style={[
+              styles.messageBox,
+              messageType === "error"
+                ? styles.errorBox
+                : styles.successBox,
+            ]}
+          >
+            <Text style={styles.messageText}>{message}</Text>
+          </View>
+        ) : null}
+
         <TouchableOpacity
           style={styles.createButton}
           onPress={handleCreateAccount}
+          disabled={loading}
         >
-          <Text style={styles.createText}>Criar Conta</Text>
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.createText}>Criar Conta</Text>
+          )}
         </TouchableOpacity>
 
         <TouchableOpacity
           onPress={() => navigation.goBack()}
-          style={[
-            styles.createButton,
-            { marginTop: 10, backgroundColor: "transparent", borderColor: "#3a6cf4" },
-          ]}
+          style={styles.backButton}
         >
-          <Text style={[styles.createText, { color: "#3a6cf4" }]}>
-            Voltar para Login
-          </Text>
+          <Text style={styles.backText}>Voltar para Login</Text>
         </TouchableOpacity>
       </View>
     </ImageBackground>
@@ -147,8 +193,6 @@ const styles = StyleSheet.create({
     width: "85%",
     padding: 25,
     alignItems: "center",
-
-    // <<< este aqui resolve o teu problema:
     marginTop: 120,
   },
   title: {
@@ -179,15 +223,46 @@ const styles = StyleSheet.create({
     position: "absolute",
     right: 10,
   },
+  messageBox: {
+    width: "100%",
+    paddingVertical: 8,
+    borderRadius: 6,
+    marginBottom: 10,
+  },
+  messageText: {
+    color: "#fff",
+    textAlign: "center",
+    fontWeight: "bold",
+  },
+  errorBox: {
+    backgroundColor: "rgba(255, 77, 77, 0.9)",
+  },
+  successBox: {
+    backgroundColor: "rgba(76, 175, 80, 0.9)",
+  },
   createButton: {
     backgroundColor: "#3a6cf4",
     width: "100%",
     paddingVertical: 12,
     borderRadius: 8,
     marginTop: 10,
+    alignItems: "center",
   },
   createText: {
     color: "#fff",
+    textAlign: "center",
+    fontWeight: "bold",
+  },
+  backButton: {
+    marginTop: 15,
+    borderWidth: 1,
+    borderColor: "#3a6cf4",
+    borderRadius: 8,
+    paddingVertical: 10,
+    width: "100%",
+  },
+  backText: {
+    color: "#3a6cf4",
     textAlign: "center",
     fontWeight: "bold",
   },
