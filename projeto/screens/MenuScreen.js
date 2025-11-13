@@ -1,8 +1,10 @@
-import React from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
+import React, { useEffect, useState } from "react";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from "react-native";
 import { createDrawerNavigator } from "@react-navigation/drawer";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
+import { getFirestore, collection, query, where, onSnapshot } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
 
 import FormMovimentacao from "./FormMovimentacao";
 import PlanilhaMov from "./PlanilhaMov";
@@ -14,24 +16,85 @@ const Drawer = createDrawerNavigator();
 
 function HomeMenu() {
   const navigation = useNavigation();
+  const [movimentacoes, setMovimentacoes] = useState([]);
+  const [usuarioNome, setUsuarioNome] = useState("");
+  const [loading, setLoading] = useState(true);
 
-  const data = [
-    { name: "Fixas", value: 1200, color: "#3b82f6" },
-    { name: "Variáveis", value: 850, color: "#facc15" },
-    { name: "Parceladas", value: 500, color: "#10b981" },
-    { name: "Empréstimos", value: 400, color: "#f87171" },
+  const db = getFirestore();
+  const auth = getAuth();
+  const user = auth.currentUser;
+
+  useEffect(() => {
+    if (!user) return;
+
+    // Buscar movimentações do usuário logado em tempo real
+    const q = query(collection(db, "movimentacao"), where("usuario_id", "==", user.uid));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const lista = [];
+      snapshot.forEach((doc) => {
+        lista.push({ id: doc.id, ...doc.data() });
+      });
+      setMovimentacoes(lista);
+      setLoading(false);
+    });
+
+    // Buscar o nome do usuário da coleção "usuarios" (se existir)
+    const unsubUser = onSnapshot(collection(db, "usuarios"), (snapshot) => {
+      snapshot.forEach((doc) => {
+        if (doc.id === user.uid) {
+          setUsuarioNome(doc.data().nome || "Usuário");
+        }
+      });
+    });
+
+    return () => {
+      unsubscribe();
+      unsubUser();
+    };
+  }, [user]);
+
+  // Calcular saldo e totais
+  const entradas = movimentacoes.filter((m) => m.tipo_movimentacao === "entrada");
+  const saidas = movimentacoes.filter((m) => m.tipo_movimentacao === "saida");
+
+  const saldo =
+    entradas.reduce((acc, item) => acc + Number(item.valor), 0) -
+    saidas.reduce((acc, item) => acc + Number(item.valor), 0);
+
+  const totalFixas = movimentacoes
+    .filter((m) => m.categoria === "fixa")
+    .reduce((acc, item) => acc + Number(item.valor), 0);
+  const totalVariaveis = movimentacoes
+    .filter((m) => m.categoria === "variavel")
+    .reduce((acc, item) => acc + Number(item.valor), 0);
+  const totalParceladas = movimentacoes
+    .filter((m) => m.categoria === "parcelada")
+    .reduce((acc, item) => acc + Number(item.valor), 0);
+  const totalEmprestimos = movimentacoes
+    .filter((m) => m.categoria === "emprestimo")
+    .reduce((acc, item) => acc + Number(item.valor), 0);
+
+  const totais = [
+    { name: "Fixas", value: totalFixas, color: "#3b82f6" },
+    { name: "Variáveis", value: totalVariaveis, color: "#facc15" },
+    { name: "Parceladas", value: totalParceladas, color: "#10b981" },
+    { name: "Empréstimos", value: totalEmprestimos, color: "#f87171" },
   ];
 
-  const totalExpenses = data.reduce((acc, cur) => acc + cur.value, 0);
+  const totalDespesas = totalFixas + totalVariaveis + totalParceladas + totalEmprestimos;
 
-  const historico = [
-    { id: 1, descricao: "💼 Salário recebido", valor: 3500, tipo: "entrada", data: "01/11/2025" },
-    { id: 2, descricao: "🛒 Supermercado", valor: 280, tipo: "saida", data: "02/11/2025" },
-    { id: 3, descricao: "⛽ Gasolina", valor: 120, tipo: "saida", data: "03/11/2025" },
-    { id: 4, descricao: "🎮 Assinatura Game Pass", valor: 49.9, tipo: "saida", data: "03/11/2025" },
-  ];
+  const historicoOrdenado = [...movimentacoes]
+    .sort((a, b) => b.criado_em?.seconds - a.criado_em?.seconds)
+    .slice(0, 10); // últimas 10
 
-  const notificacoes = 3;
+  if (loading) {
+    return (
+      <View style={[styles.container, { justifyContent: "center", alignItems: "center" }]}>
+        <ActivityIndicator size="large" color="#3a6cf4" />
+        <Text style={{ color: "#fff", marginTop: 10 }}>Carregando dados...</Text>
+      </View>
+    );
+  }
 
   return (
     <ScrollView style={styles.container}>
@@ -40,7 +103,7 @@ function HomeMenu() {
         <View style={styles.profileSection}>
           <Ionicons name="person-circle-outline" size={48} color="#fff" />
           <View>
-            <Text style={styles.greeting}>Olá, Lucas 👋</Text>
+            <Text style={styles.greeting}>Olá, {usuarioNome || "Usuário"} </Text>
             <Text style={styles.subtitle}>Bem-vindo ao Grana+</Text>
           </View>
         </View>
@@ -50,24 +113,19 @@ function HomeMenu() {
           onPress={() => navigation.navigate("Notificações")}
         >
           <Ionicons name="notifications-outline" size={40} color="#fff" />
-          {notificacoes > 0 && (
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{notificacoes}</Text>
-            </View>
-          )}
         </TouchableOpacity>
       </View>
 
       {/* Card de Saldo */}
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Saldo Atual</Text>
-        <Text style={styles.cardValue}>R$ 4.250,00</Text>
+        <Text style={styles.cardValue}>R$ {saldo.toFixed(2)}</Text>
       </View>
 
       {/* Card de Despesas Mensais */}
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Despesas Mensais</Text>
-        {data.map((item, index) => (
+        {totais.map((item, index) => (
           <View key={index} style={styles.itemRow}>
             <View style={[styles.colorDot, { backgroundColor: item.color }]} />
             <Text style={styles.itemLabel}>{item.name}</Text>
@@ -77,10 +135,9 @@ function HomeMenu() {
 
         <View style={styles.itemRowTotal}>
           <Text style={styles.itemLabel}>Total</Text>
-          <Text style={styles.itemValue}>R$ {totalExpenses.toFixed(2)}</Text>
+          <Text style={styles.itemValue}>R$ {totalDespesas.toFixed(2)}</Text>
         </View>
 
-        {/* Botão Visualizar Gráfico */}
         <TouchableOpacity
           style={styles.viewChartButton}
           onPress={() => navigation.navigate("Dashboard")}
@@ -92,22 +149,28 @@ function HomeMenu() {
       {/* Histórico */}
       <View style={styles.historicoContainer}>
         <Text style={styles.historicoTitulo}>📊 Histórico de Movimentações</Text>
-        {historico.map((mov) => (
-          <View key={mov.id} style={styles.historicoCard}>
-            <View style={styles.historicoInfo}>
-              <Text style={styles.historicoDesc}>{mov.descricao}</Text>
-              <Text style={styles.historicoData}>{mov.data}</Text>
+        {historicoOrdenado.length === 0 ? (
+          <Text style={{ color: "#aaa", textAlign: "center" }}>Nenhuma movimentação encontrada.</Text>
+        ) : (
+          historicoOrdenado.map((mov) => (
+            <View key={mov.id} style={styles.historicoCard}>
+              <View style={styles.historicoInfo}>
+                <Text style={styles.historicoDesc}>
+                  {mov.icone_selecionado || "💰"} {mov.descricao}
+                </Text>
+                <Text style={styles.historicoData}>{mov.data}</Text>
+              </View>
+              <Text
+                style={[
+                  styles.historicoValor,
+                  { color: mov.tipo_movimentacao === "entrada" ? "#10b981" : "#f87171" },
+                ]}
+              >
+                {mov.tipo_movimentacao === "entrada" ? "+" : "-"}R$ {Number(mov.valor).toFixed(2)}
+              </Text>
             </View>
-            <Text
-              style={[
-                styles.historicoValor,
-                { color: mov.tipo === "entrada" ? "#10b981" : "#f87171" },
-              ]}
-            >
-              {mov.tipo === "entrada" ? "+" : "-"}R$ {mov.valor.toFixed(2)}
-            </Text>
-          </View>
-        ))}
+          ))
+        )}
       </View>
     </ScrollView>
   );
@@ -175,22 +238,6 @@ const styles = StyleSheet.create({
   },
   notificationContainer: {
     position: "relative",
-  },
-  badge: {
-    position: "absolute",
-    top: 2,
-    right: 2,
-    backgroundColor: "#f87171",
-    borderRadius: 10,
-    width: 18,
-    height: 18,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  badgeText: {
-    color: "#fff",
-    fontSize: 11,
-    fontWeight: "bold",
   },
   card: {
     backgroundColor: "#13294b",

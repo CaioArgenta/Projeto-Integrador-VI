@@ -52,7 +52,7 @@ export default function CrialoginScreen({ navigation }) {
       await updateProfile(user, { displayName: name });
 
       // 🔹 Verifica se o usuário já existe na coleção "usuarios"
-      const userRef = doc(db, "/usuarios/", user.uid);
+      const userRef = doc(db, "usuarios", user.uid);
       const userSnap = await getDoc(userRef);
 
       if (!userSnap.exists()) {
@@ -61,7 +61,6 @@ export default function CrialoginScreen({ navigation }) {
           uid: user.uid,
           nome: name,
           email: email,
-          saldo: 0,
           criado_em: new Date(),
         });
       }

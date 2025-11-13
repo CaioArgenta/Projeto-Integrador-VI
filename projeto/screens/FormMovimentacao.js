@@ -10,6 +10,8 @@ import {
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import { Ionicons } from "@expo/vector-icons";
+import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { auth, db } from "../firebaseConfig"; // <-- ajuste o caminho conforme seu projeto
 
 export default function FormMovimentacao({ navigation }) {
   const [tipoMovimentacao, setTipoMovimentacao] = useState("");
@@ -23,15 +25,43 @@ export default function FormMovimentacao({ navigation }) {
   const [parcelas, setParcelas] = useState("");
   const [iconeSelecionado, setIconeSelecionado] = useState("💼");
 
-   const icones = [ "💵", "💼", "🛒", "⛽", "🎮", "🏠", "📱", "🍔", "💳", "🏥"];
+  const icones = ["💵", "💼", "🛒", "⛽", "🎮", "🏠", "📱", "🍔", "💳", "🏥"];
 
-  const handleSalvar = () => {
+  const handleSalvar = async () => {
     if (!tipoMovimentacao || !formaPagamento || !valor || !data || !contaOrigem) {
       Alert.alert("Atenção", "Preencha todos os campos obrigatórios!");
       return;
     }
 
-    Alert.alert("Sucesso", "Movimentação registrada com sucesso!");
+    try {
+      const user = auth.currentUser;
+
+      if (!user) {
+        Alert.alert("Erro", "Usuário não autenticado!");
+        return;
+      }
+
+      await addDoc(collection(db, "movimentacao"), {
+        usuario_id: user.uid,
+        tipo_movimentacao: tipoMovimentacao.trim(),
+        categoria: categoria,
+        parcelas: categoria === "parcelada" ? Number(parcelas) || 0 : 0,
+        formas_pagamento: formaPagamento,
+        conta_origem: contaOrigem,
+        valor: Number(valor),
+        data: data,
+        vencimento: vencimento,
+        descricao: descricao || "",
+        icone_selecionado: iconeSelecionado,
+        criado_em: serverTimestamp(),
+      });
+
+      Alert.alert("Sucesso", "Movimentação registrada com sucesso!");
+      navigation.goBack();
+    } catch (error) {
+      console.error("Erro ao salvar movimentação:", error);
+      Alert.alert("Erro", "Não foi possível salvar a movimentação.");
+    }
   };
 
   return (
@@ -93,7 +123,6 @@ export default function FormMovimentacao({ navigation }) {
           <Picker.Item label="Empréstimo" value="emprestimo" color="#fff" />
         </Picker>
 
-        {/* Se for Parcelada, mostra o campo Parcelas */}
         {categoria === "parcelada" && (
           <>
             <Text style={styles.label}>Quantidade de Parcelas</Text>
@@ -160,7 +189,7 @@ export default function FormMovimentacao({ navigation }) {
           onChangeText={setData}
         />
 
-        {/* Data de Vencimento */}
+        {/* Vencimento */}
         <Text style={styles.label}>Data de Vencimento</Text>
         <TextInput
           style={styles.input}
@@ -181,7 +210,6 @@ export default function FormMovimentacao({ navigation }) {
           onChangeText={setDescricao}
         />
 
-        {/* Botão Salvar */}
         <TouchableOpacity style={styles.botao} onPress={handleSalvar}>
           <Text style={styles.textoBotao}>Salvar Movimentação</Text>
         </TouchableOpacity>
@@ -191,15 +219,8 @@ export default function FormMovimentacao({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#0e1a2b",
-    paddingHorizontal: 20,
-  },
-  voltarButton: {
-    marginTop: 50,
-    alignSelf: "flex-start",
-  },
+  container: { flex: 1, backgroundColor: "#0e1a2b", paddingHorizontal: 20 },
+  voltarButton: { marginTop: 50, alignSelf: "flex-start" },
   titulo: {
     fontSize: 24,
     color: "#fff",
@@ -207,14 +228,8 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginVertical: 20,
   },
-  form: {
-    marginTop: 10,
-  },
-  label: {
-    color: "#fff",
-    fontSize: 16,
-    marginBottom: 6,
-  },
+  form: { marginTop: 10 },
+  label: { color: "#fff", fontSize: 16, marginBottom: 6 },
   input: {
     backgroundColor: "#1a2942",
     borderRadius: 10,
@@ -241,12 +256,8 @@ const styles = StyleSheet.create({
     padding: 10,
     margin: 5,
   },
-  iconeSelecionado: {
-    backgroundColor: "#4CAF50",
-  },
-  iconeTexto: {
-    fontSize: 24,
-  },
+  iconeSelecionado: { backgroundColor: "#4CAF50" },
+  iconeTexto: { fontSize: 24 },
   botao: {
     backgroundColor: "#4CAF50",
     padding: 15,
@@ -254,9 +265,5 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginVertical: 25,
   },
-  textoBotao: {
-    color: "#fff",
-    fontWeight: "bold",
-    fontSize: 16,
-  },
+  textoBotao: { color: "#fff", fontWeight: "bold", fontSize: 16 },
 });
