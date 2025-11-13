@@ -9,8 +9,12 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
-import { auth } from "../firebaseConfig";
+import {
+  createUserWithEmailAndPassword,
+  updateProfile,
+} from "firebase/auth";
+import { doc, setDoc, getDoc } from "firebase/firestore";
+import { auth, db } from "../firebaseConfig";
 
 export default function CrialoginScreen({ navigation }) {
   const [showPassword, setShowPassword] = useState(false);
@@ -39,17 +43,39 @@ export default function CrialoginScreen({ navigation }) {
 
     try {
       setLoading(true);
+
+      // 🔹 Cria o usuário no Firebase Auth
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      await updateProfile(userCredential.user, { displayName: name });
+      const user = userCredential.user;
+
+      // 🔹 Define o nome no perfil do Auth
+      await updateProfile(user, { displayName: name });
+
+      // 🔹 Verifica se o usuário já existe na coleção "usuarios"
+      const userRef = doc(db, "/usuarios/", user.uid);
+      const userSnap = await getDoc(userRef);
+
+      if (!userSnap.exists()) {
+        // Cria o documento com o mesmo UID do Auth
+        await setDoc(userRef, {
+          uid: user.uid,
+          nome: name,
+          email: email,
+          saldo: 0,
+          criado_em: new Date(),
+        });
+      }
 
       setLoading(false);
       setMessage("Conta criada com sucesso! Agora você pode fazer login.");
       setMessageType("success");
 
+      // 🔹 Volta para a tela de login depois de 2 segundos
       setTimeout(() => navigation.goBack(), 2000);
+
     } catch (error) {
       setLoading(false);
-      console.log("Erro Firebase:", error.code);
+      console.log("🔥 Erro Firebase:", error.code);
 
       let msg = "Ocorreu um erro ao criar a conta.";
       if (error.code === "auth/weak-password") {
@@ -66,10 +92,7 @@ export default function CrialoginScreen({ navigation }) {
   };
 
   return (
-    <ImageBackground
-      source={require("../assets/dark.jpg")}
-      style={styles.container}
-    >
+    <ImageBackground source={require("../assets/dark.jpg")} style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.logoText}>💰 Grana+</Text>
       </View>
@@ -126,14 +149,11 @@ export default function CrialoginScreen({ navigation }) {
           onChangeText={setConfirmPassword}
         />
 
-        {/* Mensagem no estilo do login (caixinha colorida) */}
         {message ? (
           <View
             style={[
               styles.messageBox,
-              messageType === "error"
-                ? styles.errorBox
-                : styles.successBox,
+              messageType === "error" ? styles.errorBox : styles.successBox,
             ]}
           >
             <Text style={styles.messageText}>{message}</Text>
