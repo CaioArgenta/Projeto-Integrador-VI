@@ -56,13 +56,32 @@ export default function FormMovimentacao({ navigation }) {
         criado_em: serverTimestamp(),
       });
 
+      // 🔹 2. Cria uma notificação associada
+await addDoc(collection(db, "notificacoes"), {
+  usuario_id: user.uid,
+  titulo: "Nova movimentação registrada 💰",
+  mensagem: `Você adicionou uma ${tipoMovimentacao.trim()} de R$${valor} na categoria ${categoria}.`,
+  tipo: "info",
+  lido: false,
+  criado_em: serverTimestamp(),
+});
+
+
+      
+
       Alert.alert("Sucesso", "Movimentação registrada com sucesso!");
       navigation.goBack();
     } catch (error) {
       console.error("Erro ao salvar movimentação:", error);
       Alert.alert("Erro", "Não foi possível salvar a movimentação.");
     }
+
+
+
+
   };
+
+
 
   return (
     <ScrollView style={styles.container}>

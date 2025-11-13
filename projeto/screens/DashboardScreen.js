@@ -7,15 +7,23 @@ import {
   ScrollView,
   TouchableOpacity,
   Dimensions,
+  ActivityIndicator,
 } from "react-native";
 import { PieChart } from "react-native-chart-kit";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
+import { getAuth } from "firebase/auth";
+import { getFirestore, collection, query, where, getDocs } from "firebase/firestore";
 
 export default function DashboardScreen() {
   const navigation = useNavigation();
   const [screenWidth, setScreenWidth] = useState(Dimensions.get("window").width);
   const [selectedCategory, setSelectedCategory] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState([]);
+
+  const db = getFirestore();
+  const auth = getAuth();
 
   useEffect(() => {
     const subscription = Dimensions.addEventListener("change", ({ window }) => {
@@ -24,29 +32,90 @@ export default function DashboardScreen() {
     return () => subscription?.remove();
   }, []);
 
-  const data = [
-    { name: "Fixas", value: 1200, color: "#3b82f6" },
-    { name: "Parceladas", value: 500, color: "#10b981" },
-    { name: "Variáveis", value: 850, color: "#facc15" },
-    { name: "Empréstimos", value: 400, color: "#f87171" },
-  ];
+  // 🔹 Carrega os dados reais do Firestore
+  useEffect(() => {
+    const carregarMovimentacoes = async () => {
+      try {
+        const user = auth.currentUser;
+        if (!user) return;
+
+        const q = query(
+          collection(db, "movimentacao"),
+          where("usuario_id", "==", user.uid)
+        );
+        const snapshot = await getDocs(q);
+
+        const fixas = [];
+        const variaveis = [];
+        const parceladas = [];
+        const emprestimos = [];
+
+        snapshot.forEach((doc) => {
+          const mov = doc.data();
+          if (mov.tipo_movimentacao === "saida") {
+            switch (mov.categoria.toLowerCase()) {
+              case "fixa":
+                fixas.push(mov);
+                break;
+              case "variavel":
+              case "variáveis":
+                variaveis.push(mov);
+                break;
+              case "parcelada":
+              case "parceladas":
+                parceladas.push(mov);
+                break;
+              case "emprestimo":
+              case "empréstimos":
+                emprestimos.push(mov);
+                break;
+              default:
+                break;
+            }
+          }
+        });
+
+        const soma = (arr) => arr.reduce((acc, mov) => acc + Number(mov.valor || 0), 0);
+
+        const categorias = [
+          { name: "Fixas", value: soma(fixas), color: "#3b82f6" },
+          { name: "Parceladas", value: soma(parceladas), color: "#10b981" },
+          { name: "Variáveis", value: soma(variaveis), color: "#facc15" },
+          { name: "Empréstimos", value: soma(emprestimos), color: "#f87171" },
+        ];
+
+        setData(categorias);
+      } catch (error) {
+        console.error("Erro ao carregar movimentações:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    carregarMovimentacoes();
+  }, []);
 
   const maxChartWidth = 250;
   const chartWidth = Math.min(screenWidth * 0.5, maxChartWidth);
   const total = data.reduce((acc, cur) => acc + cur.value, 0);
 
   const handlePress = (tipo) => {
-    console.log("Botão clicado:", tipo);
     setSelectedCategory(tipo);
-
     if (tipo === "Parceladas") {
-      console.log("Navegando para Telaparcelas");
       navigation.navigate("Telaparcelas");
     } else {
-      console.log("Navegando para Planilha de Movimentações");
       navigation.navigate("Planilha de Movimentações", { tipo });
     }
   };
+
+  if (loading) {
+    return (
+      <View style={[styles.container, { justifyContent: "center" }]}>
+        <ActivityIndicator size="large" color="#3b82f6" />
+        <Text style={{ color: "#fff", marginTop: 10 }}>Carregando dados...</Text>
+      </View>
+    );
+  }
 
   return (
     <ScrollView
@@ -95,7 +164,7 @@ export default function DashboardScreen() {
           {/* Legenda */}
           <View style={styles.legendContainer}>
             {data.map((item, index) => {
-              const percent = (item.value / total) * 100;
+              const percent = total ? (item.value / total) * 100 : 0;
               return (
                 <View key={index} style={styles.legendItem}>
                   <View
@@ -141,6 +210,7 @@ export default function DashboardScreen() {
   );
 }
 
+// estilos (inalterados)
 const styles = StyleSheet.create({
   container: {
     flexGrow: 1,

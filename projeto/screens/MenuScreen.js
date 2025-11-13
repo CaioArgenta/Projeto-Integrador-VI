@@ -1,5 +1,13 @@
-import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from "react-native";
+import React, { useEffect, useState, useRef } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+  Animated,
+} from "react-native";
 import { createDrawerNavigator } from "@react-navigation/drawer";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -19,6 +27,8 @@ function HomeMenu() {
   const [movimentacoes, setMovimentacoes] = useState([]);
   const [usuarioNome, setUsuarioNome] = useState("");
   const [loading, setLoading] = useState(true);
+  const [notificacoesNaoLidas, setNotificacoesNaoLidas] = useState(0);
+  const pulseAnim = useRef(new Animated.Value(1)).current;
 
   const db = getFirestore();
   const auth = getAuth();
@@ -27,65 +37,77 @@ function HomeMenu() {
   useEffect(() => {
     if (!user) return;
 
-    // Buscar movimentações do usuário logado em tempo real
     const q = query(collection(db, "movimentacao"), where("usuario_id", "==", user.uid));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const lista = [];
-      snapshot.forEach((doc) => {
-        lista.push({ id: doc.id, ...doc.data() });
-      });
+      snapshot.forEach((doc) => lista.push({ id: doc.id, ...doc.data() }));
       setMovimentacoes(lista);
       setLoading(false);
     });
 
-    // Buscar o nome do usuário da coleção "usuarios" (se existir)
     const unsubUser = onSnapshot(collection(db, "usuarios"), (snapshot) => {
       snapshot.forEach((doc) => {
-        if (doc.id === user.uid) {
-          setUsuarioNome(doc.data().nome || "Usuário");
-        }
+        if (doc.id === user.uid) setUsuarioNome(doc.data().nome || "Usuário");
       });
+    });
+
+    const qNotif = query(
+      collection(db, "notificacoes"),
+      where("usuario_id", "==", user.uid),
+      where("lido", "==", false)
+    );
+    const unsubNotif = onSnapshot(qNotif, (snapshot) => {
+      setNotificacoesNaoLidas(snapshot.size);
     });
 
     return () => {
       unsubscribe();
       unsubUser();
+      unsubNotif();
     };
   }, [user]);
 
-  // Calcular saldo e totais
+  // Animação pulsante quando há notificações novas
+  useEffect(() => {
+    if (notificacoesNaoLidas > 0) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 1.4,
+            duration: 600,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 600,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    } else {
+      pulseAnim.setValue(1);
+    }
+  }, [notificacoesNaoLidas]);
+
   const entradas = movimentacoes.filter((m) => m.tipo_movimentacao === "entrada");
   const saidas = movimentacoes.filter((m) => m.tipo_movimentacao === "saida");
-
   const saldo =
     entradas.reduce((acc, item) => acc + Number(item.valor), 0) -
     saidas.reduce((acc, item) => acc + Number(item.valor), 0);
 
-  const totalFixas = movimentacoes
-    .filter((m) => m.categoria === "fixa")
-    .reduce((acc, item) => acc + Number(item.valor), 0);
-  const totalVariaveis = movimentacoes
-    .filter((m) => m.categoria === "variavel")
-    .reduce((acc, item) => acc + Number(item.valor), 0);
-  const totalParceladas = movimentacoes
-    .filter((m) => m.categoria === "parcelada")
-    .reduce((acc, item) => acc + Number(item.valor), 0);
-  const totalEmprestimos = movimentacoes
-    .filter((m) => m.categoria === "emprestimo")
-    .reduce((acc, item) => acc + Number(item.valor), 0);
-
   const totais = [
-    { name: "Fixas", value: totalFixas, color: "#3b82f6" },
-    { name: "Variáveis", value: totalVariaveis, color: "#facc15" },
-    { name: "Parceladas", value: totalParceladas, color: "#10b981" },
-    { name: "Empréstimos", value: totalEmprestimos, color: "#f87171" },
+    { name: "Fixas", value: movimentacoes.filter((m) => m.categoria === "fixa").reduce((a, i) => a + Number(i.valor), 0), color: "#3b82f6" },
+    { name: "Variáveis", value: movimentacoes.filter((m) => m.categoria === "variavel").reduce((a, i) => a + Number(i.valor), 0), color: "#facc15" },
+    { name: "Parceladas", value: movimentacoes.filter((m) => m.categoria === "parcelada").reduce((a, i) => a + Number(i.valor), 0), color: "#10b981" },
+    { name: "Empréstimos", value: movimentacoes.filter((m) => m.categoria === "emprestimo").reduce((a, i) => a + Number(i.valor), 0), color: "#f87171" },
   ];
 
-  const totalDespesas = totalFixas + totalVariaveis + totalParceladas + totalEmprestimos;
+  const totalDespesas = totais.reduce((acc, t) => acc + t.value, 0);
 
-  const historicoOrdenado = [...movimentacoes]
-    .sort((a, b) => b.criado_em?.seconds - a.criado_em?.seconds)
-    .slice(0, 10); // últimas 10
+  const historicoOrdenado = [...movimentacoes].sort(
+    (a, b) => b.criado_em?.seconds - a.criado_em?.seconds
+  );
+  const historicoLimitado = historicoOrdenado.slice(0, 5);
 
   if (loading) {
     return (
@@ -108,11 +130,19 @@ function HomeMenu() {
           </View>
         </View>
 
+        {/* Ícone de notificação com badge pulsante */}
         <TouchableOpacity
           style={styles.notificationContainer}
           onPress={() => navigation.navigate("Notificações")}
         >
           <Ionicons name="notifications-outline" size={40} color="#fff" />
+        {notificacoesNaoLidas > 0 && (
+  <Animated.View style={[styles.notificationBadge, { transform: [{ scale: pulseAnim }] }]}>
+    <Text style={styles.notificationCount}>
+      {notificacoesNaoLidas > 9 ? "9+" : notificacoesNaoLidas}
+    </Text>
+  </Animated.View>
+)}
         </TouchableOpacity>
       </View>
 
@@ -122,7 +152,7 @@ function HomeMenu() {
         <Text style={styles.cardValue}>R$ {saldo.toFixed(2)}</Text>
       </View>
 
-      {/* Card de Despesas Mensais */}
+      {/* Despesas Mensais */}
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Despesas Mensais</Text>
         {totais.map((item, index) => (
@@ -132,12 +162,10 @@ function HomeMenu() {
             <Text style={styles.itemValue}>R$ {item.value.toFixed(2)}</Text>
           </View>
         ))}
-
         <View style={styles.itemRowTotal}>
           <Text style={styles.itemLabel}>Total</Text>
           <Text style={styles.itemValue}>R$ {totalDespesas.toFixed(2)}</Text>
         </View>
-
         <TouchableOpacity
           style={styles.viewChartButton}
           onPress={() => navigation.navigate("Dashboard")}
@@ -149,10 +177,11 @@ function HomeMenu() {
       {/* Histórico */}
       <View style={styles.historicoContainer}>
         <Text style={styles.historicoTitulo}>📊 Histórico de Movimentações</Text>
-        {historicoOrdenado.length === 0 ? (
+
+        {historicoLimitado.length === 0 ? (
           <Text style={{ color: "#aaa", textAlign: "center" }}>Nenhuma movimentação encontrada.</Text>
         ) : (
-          historicoOrdenado.map((mov) => (
+          historicoLimitado.map((mov) => (
             <View key={mov.id} style={styles.historicoCard}>
               <View style={styles.historicoInfo}>
                 <Text style={styles.historicoDesc}>
@@ -170,6 +199,15 @@ function HomeMenu() {
               </Text>
             </View>
           ))
+        )}
+
+        {historicoOrdenado.length > 5 && (
+          <TouchableOpacity
+            style={styles.verMaisButton}
+            onPress={() => navigation.navigate("Planilha de Movimentações")}
+          >
+            <Text style={styles.verMaisText}>Ver todas as movimentações</Text>
+          </TouchableOpacity>
         )}
       </View>
     </ScrollView>
@@ -190,11 +228,7 @@ export default function MenuScreen() {
         drawerActiveTintColor: "#3a6cf4",
         drawerInactiveTintColor: "#fff",
         drawerLabelStyle: { fontSize: 16, fontWeight: "bold" },
-        headerStyle: {
-          backgroundColor: "#13294b",
-          borderBottomWidth: 1,
-          borderBottomColor: "#3a6cf4",
-        },
+        headerStyle: { backgroundColor: "#13294b", borderBottomWidth: 1, borderBottomColor: "#3a6cf4" },
         headerTintColor: "#fff",
         headerTitleStyle: { fontWeight: "bold", color: "#fff" },
       }}
@@ -210,35 +244,24 @@ export default function MenuScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#0e1a2b",
-    paddingHorizontal: 20,
-    paddingTop: 30,
-  },
-  headerTop: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+  container: { flex: 1, backgroundColor: "#0e1a2b", paddingHorizontal: 20, paddingTop: 30 },
+  headerTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 25 },
+  profileSection: { flexDirection: "row", alignItems: "center", gap: 10 },
+  greeting: { color: "#fff", fontSize: 20, fontWeight: "bold" },
+  subtitle: { color: "#aaa", fontSize: 14 },
+  notificationContainer: { position: "relative" },
+  notificationBadge: {
+    position: "absolute",
+    top: -3,
+    right: -3,
+    backgroundColor: "#ff4444",
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    justifyContent: "center",
     alignItems: "center",
-    marginBottom: 25,
   },
-  profileSection: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  greeting: {
-    color: "#fff",
-    fontSize: 20,
-    fontWeight: "bold",
-  },
-  subtitle: {
-    color: "#aaa",
-    fontSize: 14,
-  },
-  notificationContainer: {
-    position: "relative",
-  },
+  notificationCount: { color: "#fff", fontSize: 12, fontWeight: "bold" },
   card: {
     backgroundColor: "#13294b",
     padding: 20,
@@ -247,36 +270,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#3a6cf4",
   },
-  cardTitle: {
-    color: "#ccc",
-    fontSize: 16,
-    marginBottom: 10,
-  },
-  cardValue: {
-    color: "#3a6cf4",
-    fontSize: 28,
-    fontWeight: "bold",
-    marginBottom: 15,
-  },
-  itemRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  colorDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    marginRight: 8,
-  },
-  itemLabel: {
-    color: "#fff",
-    flex: 1,
-  },
-  itemValue: {
-    color: "#fff",
-    fontWeight: "bold",
-  },
+  cardTitle: { color: "#ccc", fontSize: 16, marginBottom: 10 },
+  cardValue: { color: "#3a6cf4", fontSize: 28, fontWeight: "bold", marginBottom: 15 },
+  itemRow: { flexDirection: "row", alignItems: "center", marginBottom: 8 },
+  colorDot: { width: 12, height: 12, borderRadius: 6, marginRight: 8 },
+  itemLabel: { color: "#fff", flex: 1 },
+  itemValue: { color: "#fff", fontWeight: "bold" },
   itemRowTotal: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -291,12 +290,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: "#3b82f6",
   },
-  viewChartText: {
-    color: "#fff",
-    fontWeight: "bold",
-    textAlign: "center",
-    fontSize: 16,
-  },
+  viewChartText: { color: "#fff", fontWeight: "bold", textAlign: "center", fontSize: 16 },
   historicoContainer: {
     backgroundColor: "rgba(19, 41, 75, 0.9)",
     borderRadius: 15,
@@ -305,13 +299,7 @@ const styles = StyleSheet.create({
     borderColor: "#3a6cf4",
     marginBottom: 30,
   },
-  historicoTitulo: {
-    color: "#3a6cf4",
-    fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 10,
-    textAlign: "center",
-  },
+  historicoTitulo: { color: "#3a6cf4", fontSize: 18, fontWeight: "bold", marginBottom: 10, textAlign: "center" },
   historicoCard: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -323,19 +311,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(58, 108, 244, 0.3)",
   },
-  historicoInfo: {
-    flex: 1,
+  historicoInfo: { flex: 1 },
+  historicoDesc: { color: "#fff", fontWeight: "bold" },
+  historicoData: { color: "#aaa", fontSize: 12 },
+  historicoValor: { fontWeight: "bold", fontSize: 16 },
+  verMaisButton: {
+    marginTop: 5,
+    padding: 10,
+    borderRadius: 8,
+    backgroundColor: "#3a6cf4",
+    alignItems: "center",
   },
-  historicoDesc: {
-    color: "#fff",
-    fontWeight: "bold",
-  },
-  historicoData: {
-    color: "#aaa",
-    fontSize: 12,
-  },
-  historicoValor: {
-    fontWeight: "bold",
-    fontSize: 16,
-  },
+  verMaisText: { color: "#fff", fontWeight: "bold" },
 });

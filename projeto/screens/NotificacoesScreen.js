@@ -1,41 +1,36 @@
-import React from "react";
-import { View, Text, StyleSheet, ScrollView } from "react-native";
+import React, { useEffect, useState } from "react";
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from "react-native";
+import { collection, query, where, orderBy, onSnapshot } from "firebase/firestore";
+import { auth, db } from "../firebaseConfig";
 
 export default function NotificacoesScreen() {
-  const notificacoes = [
-    {
-      id: 1,
-      titulo: "💡 Dica Financeira",
-      mensagem: "Você já revisou suas despesas do mês? Economizar R$50 pode fazer diferença!",
-      tipo: "motivacional",
-    },
-    {
-      id: 2,
-      titulo: "🛒 Lembrete",
-      mensagem: "Sua conta de supermercado vence amanhã. Planeje seu orçamento!",
-      tipo: "alerta",
-    },
-    {
-      id: 3,
-      titulo: "💰 Recebimento",
-      mensagem: "Seu salário foi depositado na conta. Parabéns!",
-      tipo: "info",
-    },
-    {
-      id: 4,
-      titulo: "📉 Alerta de Gastos",
-      mensagem: "Você gastou 80% do limite de despesas variáveis deste mês.",
-      tipo: "alerta",
-    },
-    {
-      id: 5,
-      titulo: "🎯 Meta",
-      mensagem: "Faltam apenas R$200 para alcançar sua meta de economia mensal.",
-      tipo: "motivacional",
-    },
-  ];
+  const [notificacoes, setNotificacoes] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const getBackgroundColor = (tipo) => {
+  useEffect(() => {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    // 🔹 Busca as notificações do usuário logado, em ordem decrescente de data
+    const q = query(
+      collection(db, "notificacoes"),
+      where("usuario_id", "==", user.uid),
+      orderBy("criado_em", "desc")
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const lista = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setNotificacoes(lista);
+      setLoading(false);
+    });
+
+    return unsubscribe;
+  }, []);
+
+  const getCorPorTipo = (tipo) => {
     switch (tipo) {
       case "motivacional":
         return "#10b981"; // verde
@@ -47,19 +42,37 @@ export default function NotificacoesScreen() {
     }
   };
 
+  if (loading) {
+    return (
+      <View style={[styles.container, { justifyContent: "center", alignItems: "center" }]}>
+        <ActivityIndicator size="large" color="#3b82f6" />
+        <Text style={{ color: "#fff", marginTop: 10 }}>Carregando notificações...</Text>
+      </View>
+    );
+  }
+
   return (
     <ScrollView style={styles.container}>
       <Text style={styles.header}>🔔 Notificações</Text>
 
-      {notificacoes.map((notif) => (
-        <View
-          key={notif.id}
-          style={[styles.notifCard, { borderLeftColor: getBackgroundColor(notif.tipo) }]}
-        >
-          <Text style={styles.notifTitle}>{notif.titulo}</Text>
-          <Text style={styles.notifMessage}>{notif.mensagem}</Text>
-        </View>
-      ))}
+      {notificacoes.length === 0 ? (
+        <Text style={{ color: "#ccc", textAlign: "center", marginTop: 20 }}>
+          Nenhuma notificação encontrada.
+        </Text>
+      ) : (
+        notificacoes.map((notif) => (
+          <View
+            key={notif.id}
+            style={[
+              styles.notifCard,
+              { borderLeftColor: getCorPorTipo(notif.tipo || "info") },
+            ]}
+          >
+            <Text style={styles.notifTitle}>{notif.titulo}</Text>
+            <Text style={styles.notifMessage}>{notif.mensagem}</Text>
+          </View>
+        ))
+      )}
 
       {/* Mensagem motivacional fixa */}
       <View style={[styles.notifCard, { borderLeftColor: "#10b981" }]}>
