@@ -43,8 +43,8 @@ export default function LoginScreen({ navigation }) {
 
       if (error.code === "auth/user-not-found") {
         setErrorMessage("E-mail não cadastrado!");
-      } else if (error.code === "auth/wrong-password") {
-        setErrorMessage("Senha incorreta!");
+      } else if (error.code == "auth/invalid-credential"){
+        setErrorMessage("Senha Incorreta! Verifique!");
       } else if (error.code === "auth/invalid-email") {
         setErrorMessage("E-mail inválido!");
       } else if (error.code === "auth/too-many-requests") {
@@ -176,7 +176,7 @@ const styles = StyleSheet.create({
     width: "85%",
     padding: 25,
     alignItems: "center",
-    position: "relative",
+     marginTop: 120,
   },
   title: {
     color: "#fff",

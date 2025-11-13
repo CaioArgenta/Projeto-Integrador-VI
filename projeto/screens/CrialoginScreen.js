@@ -212,7 +212,7 @@ const styles = StyleSheet.create({
     width: "85%",
     padding: 25,
     alignItems: "center",
-    marginTop: 120,
+    marginTop: 145,
   },
   title: {
     color: "#fff",
