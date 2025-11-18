@@ -14,6 +14,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { getFirestore, collection, query, where, onSnapshot } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 
+
+import CompraParcelada from "./CompraParcelada";
+import MovEmprest from "./RegistrarEmprestimo";
 import FormMovimentacao from "./FormMovimentacao";
 import PlanilhaMov from "./PlanilhaMov";
 import Configuracoes from "./Configuracoes";
@@ -235,6 +238,8 @@ export default function MenuScreen() {
     >
       <Drawer.Screen name="Início" component={HomeMenu} />
       <Drawer.Screen name="Registrar Movimentação" component={FormMovimentacao} />
+       <Drawer.Screen name="Registrar Compras" component={CompraParcelada} />
+      <Drawer.Screen name="Registrar Empréstimos" component={MovEmprest} />
       <Drawer.Screen name="Planilha de Movimentações" component={PlanilhaMov} />
       <Drawer.Screen name="Configurações" component={Configuracoes} />
       <Drawer.Screen name="Notificações" component={NotificacoesScreen} />
