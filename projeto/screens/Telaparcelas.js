@@ -1,21 +1,35 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
   ScrollView,
   TouchableOpacity,
-  Modal,
-  TextInput,
+  Alert,
+  ActivityIndicator,
 } from "react-native";
-import { AntDesign, Feather } from "@expo/vector-icons";
-
-import { Ionicons } from "@expo/vector-icons";
+import { AntDesign, Feather, Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 
-export default function TabelaParcelas() {
-  const [modalVisible, setModalVisible] = useState(false);
-  const [valorInput, setValorInput] = useState("");
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  doc,
+  getDoc,
+  updateDoc,
+  deleteDoc,
+} from "firebase/firestore";
 
+import { auth, db } from "../firebaseConfig";
+
+export default function TabelaParcelas() {
+  const [dados, setDados] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const navigation = useNavigation();
+
+  // larguras
   const COL_WIDTH = {
     valor: 160,
     parcela: 130,
@@ -24,43 +38,13 @@ export default function TabelaParcelas() {
     status: 160,
     vencimento: 200,
     pagamento: 200,
-    acoes: 150,
+    acoes: 160,
   };
 
-  const dadosOriginais = [
-    {
-      id: 1,
-      valor: "R$ 1.200,00",
-      parcela: "2/6",
-      produto: "Notebook Dell",
-      banco: "Nubank",
-      status: "Pago",
-      vencimento: "12/11/2025",
-      pagamento: "11/11/2025",
-    },
-    {
-      id: 2,
-      valor: "R$ 300,00",
-      parcela: "1/3",
-      produto: "Mouse Gamer",
-      banco: "Santander",
-      status: "Aberto",
-      vencimento: "05/12/2025",
-      pagamento: "-",
-    },
-    // pode adicionar mais exemplos aqui
-  ];
+  const TOTAL_WIDTH = Object.values(COL_WIDTH).reduce((s, v) => s + v, 0);
 
-  // estado local (poderíamos migrar pra useState se for editável)
-  const [dados, setDados] = useState(dadosOriginais);
-
-  const navigation = useNavigation();
-
-  // ----------------------------
-  // MÊS / ANO SELETOR E FILTRO
-  // ----------------------------
   const hoje = new Date();
-  const [mesAtual, setMesAtual] = useState(hoje.getMonth()); // 0-11
+  const [mesAtual, setMesAtual] = useState(hoje.getMonth());
   const [anoAtual, setAnoAtual] = useState(hoje.getFullYear());
 
   function irParaMesAnterior() {
@@ -71,6 +55,7 @@ export default function TabelaParcelas() {
       setMesAtual((m) => m - 1);
     }
   }
+
   function irParaProximoMes() {
     if (mesAtual === 11) {
       setMesAtual(0);
@@ -80,53 +65,159 @@ export default function TabelaParcelas() {
     }
   }
 
-  // Converte "dd/mm/yyyy" para Date (meia-noite local)
   function parseDateDDMMYYYY(str) {
     if (!str) return null;
-    const parts = String(str).split("/");
-    if (parts.length !== 3) return null;
-    const [dd, mm, yyyy] = parts;
-    const d = new Date(Number(yyyy), Number(mm) - 1, Number(dd));
-    if (isNaN(d.getTime())) return null;
-    return d;
+    const [dd, mm, yyyy] = String(str).split("/");
+    const d = new Date(+yyyy, +mm - 1, +dd);
+    return isNaN(d) ? null : d;
   }
 
-  // filtra pela data de vencimento (mês/ano selecionado)
+  useEffect(() => {
+    buscarParcelas();
+  }, []);
+
+  async function buscarParcelas() {
+    try {
+      const user = auth.currentUser;
+      if (!user) {
+        setDados([]);
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+
+      const q = query(
+        collection(db, "parcela_compra"),
+        where("usuario_id", "==", user.uid)
+      );
+
+      const snap = await getDocs(q);
+      const lista = [];
+
+      for (let dParc of snap.docs) {
+        const p = dParc.data();
+
+        // carrega dados da compra
+        let compra = {};
+        if (p.compra_id) {
+          const ref = doc(db, "compras", p.compra_id);
+          const snapCompra = await getDoc(ref);
+          compra = snapCompra.exists() ? snapCompra.data() : {};
+        }
+
+        // status
+        let status = "Aberto";
+        const venc = parseDateDDMMYYYY(p.vencimento);
+        const hojeLimpo = new Date(new Date().toDateString());
+
+        if (p.databaixa) status = "Pago";
+        else if (venc && venc < hojeLimpo) status = "Em atraso";
+
+        lista.push({
+          id: dParc.id,
+          valor:
+            typeof p.valor_parcela === "number"
+              ? `R$ ${p.valor_parcela.toFixed(2)}`
+              : p.valor_parcela ?? "-",
+          parcela: `${p.numero_parcela ?? "-"}/${compra.parcelas ?? "-"}`,
+          produto: compra.titulo ?? "-",
+          banco: compra.conta ?? "-",
+          status,
+          vencimento: p.vencimento ?? "-",
+          pagamento: p.databaixa ?? "-",
+          compra_id: p.compra_id,
+        });
+      }
+
+      // ordenar por vencimento
+      lista.sort((a, b) => {
+        const da = parseDateDDMMYYYY(a.vencimento) ?? new Date(0);
+        const dbb = parseDateDDMMYYYY(b.vencimento) ?? new Date(0);
+        return da - dbb;
+      });
+
+      setDados(lista);
+    } catch (e) {
+      console.log("ERRO AO CARREGAR:", e);
+      setDados([]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   const dadosFiltrados = dados.filter((item) => {
     const d = parseDateDDMMYYYY(item.vencimento);
-    if (!d) return false;
-    return d.getMonth() === mesAtual && d.getFullYear() === anoAtual;
+    return d && d.getMonth() === mesAtual && d.getFullYear() === anoAtual;
   });
 
-  // ----------------------------
-  // LÓGICA DE CORES DO STATUS
-  // ----------------------------
   function corDoStatus(item) {
-    const statusNormalized = String(item.status ?? "").trim().toLowerCase();
-    if (statusNormalized === "pago") return "#10b981"; // verde
-    // se não pago, checar vencimento (se vencimento < hoje => atrasado)
-    const venc = parseDateDDMMYYYY(item.vencimento);
-    if (venc && venc < new Date(new Date().toDateString())) {
-      // comparando apenas data (sem hora) — cria Date com toDateString para zerar hora
-      return "#f87171"; // vermelho
-    }
-    return "#3b82f6"; // azul (aberto)
+    if (item.status === "Pago") return "#10b981";
+    if (item.status === "Em atraso") return "#f87171";
+    return "#3b82f6";
   }
 
-  // ----------------------------
-  // Render
-  // ----------------------------
+  // alterar status
+  async function alterarStatus(item) {
+    try {
+      const atual = item.status;
+      const ref = doc(db, "parcela_compra", item.id);
+
+      if (atual === "Pago") {
+        await updateDoc(ref, { databaixa: "" });
+      } else {
+        const hoje = new Date();
+        await updateDoc(ref, {
+          databaixa: `${String(hoje.getDate()).padStart(2, "0")}/${String(
+            hoje.getMonth() + 1
+          ).padStart(2, "0")}/${hoje.getFullYear()}`,
+        });
+      }
+
+      buscarParcelas();
+    } catch (error) {
+      Alert.alert("Erro", "Não foi possível alterar o status.");
+    }
+  }
+
+  // EXCLUIR
+  function confirmarExcluir(item) {
+    Alert.alert(
+      "Excluir parcela",
+      `Deseja excluir a parcela ${item.parcela}?`,
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Excluir",
+          style: "destructive",
+          onPress: () => excluirParcela(item.id),
+        },
+      ]
+    );
+  }
+
+  async function excluirParcela(id) {
+    try {
+      await deleteDoc(doc(db, "parcela_compra", id));
+
+      // CORREÇÃO: recarregar lista
+      await buscarParcelas();
+
+      Alert.alert("Sucesso", "Parcela excluída.");
+    } catch (error) {
+      console.log("ERRO AO EXCLUIR:", error);
+      Alert.alert("Erro", "Não foi possível excluir.");
+    }
+  }
+
   return (
     <View style={{ flex: 1, backgroundColor: "#0e1a2b", paddingTop: 40 }}>
-      {/* Back button */}
-      <TouchableOpacity
-        onPress={() => navigation.goBack()}
-        style={{ padding: 14 }}
-      >
+      {/* VOLTAR */}
+      <TouchableOpacity onPress={() => navigation.goBack()} style={{ padding: 14 }}>
         <Ionicons name="arrow-back" size={28} color="#fff" />
       </TouchableOpacity>
 
-      {/* Mês/Ano selector */}
+      {/* MÊS */}
       <View
         style={{
           flexDirection: "row",
@@ -155,9 +246,9 @@ export default function TabelaParcelas() {
         </TouchableOpacity>
       </View>
 
-      {/* Tabela com scroll horizontal */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        <View>
+      {/* TABELA */}
+      <ScrollView horizontal contentContainerStyle={{ paddingHorizontal: 110 }}>
+        <View style={{ minWidth: TOTAL_WIDTH }}>
           {/* HEADER */}
           <View
             style={{
@@ -166,45 +257,28 @@ export default function TabelaParcelas() {
               paddingVertical: 10,
             }}
           >
-            <Text style={[styles.headerCell, { width: COL_WIDTH.valor }]}>
-              Valor
-            </Text>
-            <Text style={[styles.headerCell, { width: COL_WIDTH.parcela }]}>
-              Parcela
-            </Text>
-            <Text style={[styles.headerCell, { width: COL_WIDTH.produto }]}>
-              Produto
-            </Text>
-            <Text style={[styles.headerCell, { width: COL_WIDTH.banco }]}>
-              Banco
-            </Text>
-            <Text style={[styles.headerCell, { width: COL_WIDTH.status }]}>
-              Status
-            </Text>
+            <Text style={[styles.headerCell, { width: COL_WIDTH.valor }]}>Valor</Text>
+            <Text style={[styles.headerCell, { width: COL_WIDTH.parcela }]}>Parcela</Text>
+            <Text style={[styles.headerCell, { width: COL_WIDTH.produto }]}>Produto</Text>
+            <Text style={[styles.headerCell, { width: COL_WIDTH.banco }]}>Banco</Text>
+            <Text style={[styles.headerCell, { width: COL_WIDTH.status }]}>Status</Text>
             <Text style={[styles.headerCell, { width: COL_WIDTH.vencimento }]}>
               Vencimento
             </Text>
             <Text style={[styles.headerCell, { width: COL_WIDTH.pagamento }]}>
               Pagamento
             </Text>
-            <Text style={[styles.headerCell, { width: COL_WIDTH.acoes }]}>
-              Ações
-            </Text>
+            <Text style={[styles.headerCell, { width: COL_WIDTH.acoes }]}>Ações</Text>
           </View>
 
-          {/* LINHAS (filtradas por mês/ano) */}
-          {dadosFiltrados.length === 0 ? (
-            <View
-              style={{
-                padding: 20,
-                backgroundColor: "#1b2b4a",
-                marginTop: 8,
-                borderRadius: 8,
-              }}
-            >
-              <Text style={{ color: "#fff", textAlign: "center" }}>
-                Nenhuma parcela encontrada neste mês.
-              </Text>
+          {/* LINHAS */}
+          {loading ? (
+            <View style={{ padding: 20, alignItems: "center" }}>
+              <ActivityIndicator size="small" color="#fff" />
+            </View>
+          ) : dadosFiltrados.length === 0 ? (
+            <View style={{ padding: 20 }}>
+              <Text style={{ color: "#fff" }}>Nenhuma parcela encontrada.</Text>
             </View>
           ) : (
             dadosFiltrados.map((item) => (
@@ -217,49 +291,64 @@ export default function TabelaParcelas() {
                   marginBottom: 4,
                 }}
               >
-                <Text style={[styles.cell, { width: COL_WIDTH.valor }]}>
-                  {item.valor}
-                </Text>
+                <Text style={[styles.cell, { width: COL_WIDTH.valor }]}>{item.valor}</Text>
                 <Text style={[styles.cell, { width: COL_WIDTH.parcela }]}>
                   {item.parcela}
                 </Text>
-                <Text style={[styles.cell, { width: COL_WIDTH.produto }]}>
+
+                <Text
+                  style={[styles.cell, { width: COL_WIDTH.produto }]}
+                  numberOfLines={2}
+                >
                   {item.produto}
                 </Text>
-                <Text style={[styles.cell, { width: COL_WIDTH.banco }]}>
-                  {item.banco}
-                </Text>
 
-                {/* Status com cor dinâmica */}
-                <Text
-                  style={[
-                    styles.cell,
-                    { width: COL_WIDTH.status, color: corDoStatus(item) },
-                  ]}
+                <Text style={[styles.cell, { width: COL_WIDTH.banco }]}>{item.banco}</Text>
+
+                {/* STATUS CLICK */}
+                <TouchableOpacity
+                  onPress={() => alterarStatus(item)}
+                  style={{ width: COL_WIDTH.status, alignItems: "center" }}
                 >
-                  {item.status}
-                </Text>
+                  <Text style={[styles.cell, { color: corDoStatus(item), fontWeight: "bold" }]}>
+                    {item.status}
+                  </Text>
+                </TouchableOpacity>
 
                 <Text style={[styles.cell, { width: COL_WIDTH.vencimento }]}>
                   {item.vencimento}
                 </Text>
+
                 <Text style={[styles.cell, { width: COL_WIDTH.pagamento }]}>
                   {item.pagamento}
                 </Text>
 
+                {/* AÇÕES */}
                 <View
                   style={{
                     width: COL_WIDTH.acoes,
                     flexDirection: "row",
                     justifyContent: "center",
-                    gap: 14,
                   }}
                 >
-                  <TouchableOpacity>
-                    <Feather name="edit" size={22} color="#fff" />
+                  {/* EDITAR */}
+                  <TouchableOpacity
+                    onPress={() =>
+                      navigation.navigate("editarparcela", {
+                        id: item.id,
+                        compra_id: item.compra_id,
+                      })
+                    }
+                  >
+                    <Feather name="edit" size={20} color="#fff" />
                   </TouchableOpacity>
-                  <TouchableOpacity>
-                    <AntDesign name="delete" size={22} color="#fff" />
+
+                  {/* EXCLUIR */}
+                  <TouchableOpacity
+                    onPress={() => confirmarExcluir(item)}
+                    style={{ marginLeft: 18 }}
+                  >
+                    <AntDesign name="delete" size={20} color="#fff" />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -267,72 +356,6 @@ export default function TabelaParcelas() {
           )}
         </View>
       </ScrollView>
-
-      {/* Floating add button */}
-      <TouchableOpacity
-        onPress={() => setModalVisible(true)}
-        style={{
-          position: "absolute",
-          right: 20,
-          bottom: 30,
-          backgroundColor: "#007bff",
-          padding: 18,
-          borderRadius: 40,
-        }}
-      >
-        <AntDesign name="plus" size={26} color="#fff" />
-      </TouchableOpacity>
-
-      {/* MODAL */}
-      <Modal transparent visible={modalVisible} animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text
-              style={{
-                color: "#fff",
-                fontSize: 20,
-                fontWeight: "bold",
-                marginBottom: 18,
-              }}
-            >
-              Adicionar Parcela
-            </Text>
-
-            <TextInput
-              style={styles.input}
-              placeholder="Valor"
-              placeholderTextColor="#888"
-              value={valorInput}
-              onChangeText={setValorInput}
-            />
-
-            <TouchableOpacity
-              onPress={() => setModalVisible(false)}
-              style={{
-                backgroundColor: "#007bff",
-                padding: 14,
-                borderRadius: 8,
-                marginTop: 14,
-              }}
-            >
-              <Text
-                style={{ color: "#fff", textAlign: "center", fontWeight: "bold" }}
-              >
-                Salvar
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => setModalVisible(false)}
-              style={{ padding: 14, marginTop: 10 }}
-            >
-              <Text style={{ color: "#ccc", textAlign: "center" }}>
-                Cancelar
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 }
@@ -347,27 +370,6 @@ const styles = {
   cell: {
     color: "#fff",
     textAlign: "center",
-    fontSize: 16,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.65)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  modalContent: {
-    backgroundColor: "#13294b",
-    width: "85%",
-    padding: 20,
-    borderRadius: 12,
-  },
-  input: {
-    backgroundColor: "#111",
-    color: "#fff",
-    borderWidth: 1,
-    borderColor: "#333",
-    padding: 12,
-    borderRadius: 8,
     fontSize: 16,
   },
 };

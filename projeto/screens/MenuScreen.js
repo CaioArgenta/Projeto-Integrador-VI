@@ -14,7 +14,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { getFirestore, collection, query, where, onSnapshot } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 
-
+import DespesaMensal from "./DespesasMensais";
 import CompraParcelada from "./CompraParcelada";
 import MovEmprest from "./RegistrarEmprestimo";
 import FormMovimentacao from "./FormMovimentacao";
@@ -157,7 +157,7 @@ function HomeMenu() {
 
       {/* Despesas Mensais */}
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Despesas Mensais</Text>
+        <Text style={styles.cardTitle}>Categorias</Text>
         {totais.map((item, index) => (
           <View key={index} style={styles.itemRow}>
             <View style={[styles.colorDot, { backgroundColor: item.color }]} />
@@ -237,6 +237,7 @@ export default function MenuScreen() {
       }}
     >
       <Drawer.Screen name="Início" component={HomeMenu} />
+       <Drawer.Screen name="Registrar Despesas" component={DespesaMensal} />
       <Drawer.Screen name="Registrar Movimentação" component={FormMovimentacao} />
        <Drawer.Screen name="Registrar Compras" component={CompraParcelada} />
       <Drawer.Screen name="Registrar Empréstimos" component={MovEmprest} />

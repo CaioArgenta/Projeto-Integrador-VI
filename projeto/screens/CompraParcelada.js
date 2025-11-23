@@ -15,11 +15,22 @@ import { auth, db } from "../firebaseConfig";
 export default function CompraParcelada({ navigation }) {
   const [titulo, setTitulo] = useState("");
   const [valorTotal, setValorTotal] = useState("");
-  const [parcelas, setParcelas] = useState(1);
-  const [conta, setConta] = useState("");
+  const [parcelas, setParcelas] = useState("1");
+  const [conta, setConta] = useState("Nubank");
   const [iconeSelecionado, setIconeSelecionado] = useState("🛒");
 
-  // Data automática
+  const bancos = [
+    "Nubank",
+    "Inter",
+    "Itaú",
+    "Santander",
+    "C6 Bank",
+    "Caixa",
+    "Bradesco",
+    "Banco do Brasil",
+  ];
+
+  // Data automática (apenas exibição, não usada como vencimento fixo)
   const hoje = new Date();
   const dia = String(hoje.getDate()).padStart(2, "0");
   const mes = String(hoje.getMonth() + 1).padStart(2, "0");
@@ -34,31 +45,48 @@ export default function CompraParcelada({ navigation }) {
       return;
     }
 
+    const parcelasNum = Number(parcelas);
+
+    if (isNaN(parcelasNum) || parcelasNum < 1 || parcelasNum > 24) {
+      Alert.alert("Erro", "Parcelas deve estar entre 1 e 24.");
+      return;
+    }
+
     try {
       const user = auth.currentUser;
       if (!user) return;
 
-      // 1️⃣ Salvar a compra principal
+      // Salvar a compra principal
       const compraRef = await addDoc(collection(db, "compras"), {
         usuario_id: user.uid,
         titulo,
         valor_total: Number(valorTotal),
-        parcelas,
+        parcelas: parcelasNum,
         conta,
         icone: iconeSelecionado,
         criado_em: serverTimestamp(),
       });
 
-      const valorParcela = Number(valorTotal) / parcelas;
+      const valorParcela = Number(valorTotal) / parcelasNum;
 
-      // 2️⃣ Criar as parcelas da compra
-      for (let i = 1; i <= parcelas; i++) {
-        await addDoc(collection(db, "parcelas_compra"), {
+      // 2️⃣ Criar parcelas com vencimento correto mês a mês
+      let dataBase = new Date();
+      let diaCompra = dataBase.getDate();
+
+      for (let i = 1; i <= parcelasNum; i++) {
+        let venc = new Date(dataBase);
+        venc.setMonth(venc.getMonth() + (i - 1));
+
+        const dd = String(venc.getDate()).padStart(2, "0");
+        const mm = String(venc.getMonth() + 1).padStart(2, "0");
+        const yyyy = venc.getFullYear();
+
+        await addDoc(collection(db, "parcela_compra"), {
           compra_id: compraRef.id,
           usuario_id: user.uid,
           numero_parcela: i,
           valor_parcela: Number(valorParcela.toFixed(2)),
-          vencimento: dataHoje,
+          vencimento: `${dd}/${mm}/${yyyy}`,
           status: "pendente",
           criado_em: serverTimestamp(),
         });
@@ -83,7 +111,6 @@ export default function CompraParcelada({ navigation }) {
 
       <Text style={styles.titulo}>Registrar Compra Parcelada</Text>
 
-      {/* Ícones */}
       <Text style={styles.label}>Escolha um ícone</Text>
       <View style={styles.iconeContainer}>
         {icones.map((icone) => (
@@ -100,7 +127,6 @@ export default function CompraParcelada({ navigation }) {
         ))}
       </View>
 
-      {/* Título */}
       <Text style={styles.label}>Título da compra *</Text>
       <TextInput
         style={styles.input}
@@ -110,7 +136,6 @@ export default function CompraParcelada({ navigation }) {
         onChangeText={setTitulo}
       />
 
-      {/* Valor total */}
       <Text style={styles.label}>Valor Total (R$) *</Text>
       <TextInput
         style={styles.input}
@@ -121,41 +146,62 @@ export default function CompraParcelada({ navigation }) {
         onChangeText={setValorTotal}
       />
 
-      {/* Parcelas */}
       <Text style={styles.label}>Parcelas (1 a 24)</Text>
       <View style={styles.parcelaBox}>
         <TouchableOpacity
           style={styles.parcelaButton}
           onPress={() =>
-            setParcelas((prev) => (prev > 1 ? prev - 1 : prev))
+            setParcelas((p) => {
+              let num = Number(p);
+              if (num > 1) return String(num - 1);
+              return "1";
+            })
           }
         >
           <Text style={styles.parcelaButtonText}>-</Text>
         </TouchableOpacity>
 
-        <Text style={styles.parcelaNumero}>{parcelas}</Text>
+        <TextInput
+          style={styles.parcelaInput}
+          keyboardType="numeric"
+          value={String(parcelas)}
+          onChangeText={(v) => {
+            const cleaned = v.replace(/[^0-9]/g, "");
+            setParcelas(cleaned === "" ? "1" : cleaned);
+          }}
+        />
 
         <TouchableOpacity
           style={styles.parcelaButton}
           onPress={() =>
-            setParcelas((prev) => (prev < 24 ? prev + 1 : prev))
+            setParcelas((p) => {
+              let num = Number(p);
+              if (num < 24) return String(num + 1);
+              return "24";
+            })
           }
         >
           <Text style={styles.parcelaButtonText}>+</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Conta */}
-      <Text style={styles.label}>Conta *</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Ex: Nubank"
-        placeholderTextColor="#999"
-        value={conta}
-        onChangeText={setConta}
-      />
+      <Text style={styles.label}>Selecione a conta </Text>
 
-      {/* Botão */}
+      <View style={styles.bancosContainer}>
+        {bancos.map((b) => (
+          <TouchableOpacity
+            key={b}
+            style={[
+              styles.bancoBotao,
+              conta === b && styles.bancoSelecionado,
+            ]}
+            onPress={() => setConta(b)}
+          >
+            <Text style={styles.bancoTexto}>{b}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
       <TouchableOpacity style={styles.botao} onPress={handleSalvarCompra}>
         <Text style={styles.textoBotao}>Salvar Compra Parcelada</Text>
       </TouchableOpacity>
@@ -166,6 +212,7 @@ export default function CompraParcelada({ navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#0e1a2b", paddingHorizontal: 20 },
   voltarButton: { marginTop: 50, alignSelf: "flex-start" },
+
   titulo: {
     fontSize: 26,
     color: "#fff",
@@ -175,6 +222,7 @@ const styles = StyleSheet.create({
   },
 
   label: { color: "#fff", fontSize: 16, marginBottom: 6 },
+
   input: {
     backgroundColor: "#1a2942",
     borderRadius: 10,
@@ -184,7 +232,6 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
 
-  // Ícones
   iconeContainer: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -200,28 +247,52 @@ const styles = StyleSheet.create({
   iconeSelecionado: { backgroundColor: "#4CAF50" },
   iconeTexto: { fontSize: 26 },
 
-  // Parcelas
   parcelaBox: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 20,
   },
+
   parcelaButton: {
     backgroundColor: "#1a2942",
     borderRadius: 10,
     paddingHorizontal: 20,
     paddingVertical: 5,
   },
+
   parcelaButtonText: { color: "#fff", fontSize: 25, fontWeight: "bold" },
-  parcelaNumero: {
+
+  parcelaInput: {
+    backgroundColor: "#1a2942",
     color: "#fff",
     fontSize: 22,
-    marginHorizontal: 20,
-    fontWeight: "bold",
+    textAlign: "center",
+    width: 70,
+    borderRadius: 10,
+    marginHorizontal: 15,
+    paddingVertical: 5,
   },
 
-  // Botão
+  bancosContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginBottom: 20,
+    justifyContent: "center",
+  },
+
+  bancoBotao: {
+    backgroundColor: "#1a2942",
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    borderRadius: 10,
+    margin: 5,
+  },
+
+  bancoSelecionado: { backgroundColor: "#4CAF50" },
+
+  bancoTexto: { color: "#fff", fontSize: 14 },
+
   botao: {
     backgroundColor: "#4CAF50",
     padding: 15,

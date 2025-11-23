@@ -14,7 +14,7 @@ import { auth, db } from "../firebaseConfig";
 
 export default function RegistrarEmprestimo({ navigation }) {
   const [titulo, setTitulo] = useState("");
-  const [tipo, setTipo] = useState("peguei"); // peguei | emprestei
+  const [tipo, setTipo] = useState("peguei");
   const [valorTotal, setValorTotal] = useState("");
   const [parcelas, setParcelas] = useState(1);
   const [conta, setConta] = useState("");
@@ -26,6 +26,17 @@ export default function RegistrarEmprestimo({ navigation }) {
 
   const icones = ["💸", "🏦", "🤝", "📄", "💰", "🧾", "📌"];
 
+  const bancos = [
+    "Nubank",
+    "Inter",
+    "Itaú",
+    "Santander",
+    "C6 Bank",
+    "Caixa",
+    "Bradesco",
+    "Banco do Brasil",
+  ];
+
   const handleSalvarEmprestimo = async () => {
     if (!titulo || !valorTotal || !conta) {
       Alert.alert("Atenção", "Preencha todos os campos obrigatórios!");
@@ -36,11 +47,10 @@ export default function RegistrarEmprestimo({ navigation }) {
       const user = auth.currentUser;
       if (!user) return;
 
-      // 1️⃣ Salvar empréstimo principal
       const emprestimoRef = await addDoc(collection(db, "emprestimos"), {
         usuario_id: user.uid,
         titulo,
-        tipo, // peguei | emprestei
+        tipo,
         valor_total: Number(valorTotal),
         parcelas,
         conta,
@@ -52,7 +62,6 @@ export default function RegistrarEmprestimo({ navigation }) {
 
       const valorParcela = Number(valorTotal) / parcelas;
 
-      // 2️⃣ Criar parcelas individuais
       for (let i = 1; i <= parcelas; i++) {
         await addDoc(collection(db, "parcelas_emprestimo"), {
           emprestimo_id: emprestimoRef.id,
@@ -60,8 +69,8 @@ export default function RegistrarEmprestimo({ navigation }) {
           numero_parcela: i,
           valor_parcela: Number(valorParcela.toFixed(2)),
           vencimento: dataHoje,
-          status: "pendente", // pagarei | irão me pagar
-          tipo, // mantém o tipo aqui também
+          status: "pendente",
+          tipo,
           criado_em: serverTimestamp(),
         });
       }
@@ -76,6 +85,7 @@ export default function RegistrarEmprestimo({ navigation }) {
 
   return (
     <ScrollView style={styles.container}>
+      {/* BOTÃO VOLTAR */}
       <TouchableOpacity
         style={styles.voltarButton}
         onPress={() => navigation.goBack()}
@@ -85,7 +95,7 @@ export default function RegistrarEmprestimo({ navigation }) {
 
       <Text style={styles.titulo}>Registrar Empréstimo</Text>
 
-      {/* Ícones */}
+      {/* ÍCONES */}
       <Text style={styles.label}>Escolha um ícone</Text>
       <View style={styles.iconeContainer}>
         {icones.map((icone) => (
@@ -102,7 +112,7 @@ export default function RegistrarEmprestimo({ navigation }) {
         ))}
       </View>
 
-      {/* Título */}
+      {/* TÍTULO */}
       <Text style={styles.label}>Título *</Text>
       <TextInput
         style={styles.input}
@@ -112,7 +122,7 @@ export default function RegistrarEmprestimo({ navigation }) {
         onChangeText={setTitulo}
       />
 
-      {/* Tipo */}
+      {/* TIPO */}
       <Text style={styles.label}>Tipo *</Text>
       <View style={styles.tipoContainer}>
         <TouchableOpacity
@@ -133,7 +143,7 @@ export default function RegistrarEmprestimo({ navigation }) {
         </TouchableOpacity>
       </View>
 
-      {/* Valor total */}
+      {/* VALOR */}
       <Text style={styles.label}>Valor Total (R$) *</Text>
       <TextInput
         style={styles.input}
@@ -144,7 +154,7 @@ export default function RegistrarEmprestimo({ navigation }) {
         onChangeText={setValorTotal}
       />
 
-      {/* Parcelas */}
+      {/* PARCELAS */}
       <Text style={styles.label}>Parcelas (1 a 60)</Text>
       <View style={styles.parcelaBox}>
         <TouchableOpacity
@@ -154,7 +164,15 @@ export default function RegistrarEmprestimo({ navigation }) {
           <Text style={styles.parcelaButtonText}>-</Text>
         </TouchableOpacity>
 
-        <Text style={styles.parcelaNumero}>{parcelas}</Text>
+        <TextInput
+          style={styles.parcelaInput}
+          keyboardType="numeric"
+          value={String(parcelas)}
+          onChangeText={(text) => {
+            const n = Number(text);
+            if (!isNaN(n) && n >= 1 && n <= 60) setParcelas(n);
+          }}
+        />
 
         <TouchableOpacity
           style={styles.parcelaButton}
@@ -164,17 +182,24 @@ export default function RegistrarEmprestimo({ navigation }) {
         </TouchableOpacity>
       </View>
 
-      {/* Conta */}
+      {/* BANCOS */}
       <Text style={styles.label}>Conta *</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Ex: Nubank, Caixa, Carteira"
-        placeholderTextColor="#999"
-        value={conta}
-        onChangeText={setConta}
-      />
+      <View style={styles.bancoContainer}>
+        {bancos.map((banco) => (
+          <TouchableOpacity
+            key={banco}
+            style={[
+              styles.bancoBotao,
+              conta === banco && styles.bancoSelecionado,
+            ]}
+            onPress={() => setConta(banco)}
+          >
+            <Text style={styles.bancoTexto}>{banco}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
 
-      {/* Observação */}
+      {/* OBSERVAÇÃO */}
       <Text style={styles.label}>Observação (opcional)</Text>
       <TextInput
         style={[styles.input, { height: 80 }]}
@@ -185,7 +210,7 @@ export default function RegistrarEmprestimo({ navigation }) {
         multiline
       />
 
-      {/* Botão */}
+      {/* BOTÃO SALVAR */}
       <TouchableOpacity style={styles.botao} onPress={handleSalvarEmprestimo}>
         <Text style={styles.textoBotao}>Salvar Empréstimo</Text>
       </TouchableOpacity>
@@ -196,6 +221,7 @@ export default function RegistrarEmprestimo({ navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#0e1a2b", paddingHorizontal: 20 },
   voltarButton: { marginTop: 50, alignSelf: "flex-start" },
+
   titulo: {
     fontSize: 26,
     color: "#fff",
@@ -205,6 +231,7 @@ const styles = StyleSheet.create({
   },
 
   label: { color: "#fff", fontSize: 16, marginBottom: 6 },
+
   input: {
     backgroundColor: "#1a2942",
     borderRadius: 10,
@@ -230,6 +257,7 @@ const styles = StyleSheet.create({
   iconeTexto: { fontSize: 26 },
 
   tipoContainer: { flexDirection: "row", justifyContent: "space-between" },
+
   tipoBotao: {
     flex: 1,
     backgroundColor: "#1a2942",
@@ -253,11 +281,45 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 5,
   },
-  parcelaButtonText: { color: "#fff", fontSize: 25, fontWeight: "bold" },
-  parcelaNumero: {
+  parcelaButtonText: {
     color: "#fff",
-    fontSize: 22,
-    marginHorizontal: 20,
+    fontSize: 25,
+    fontWeight: "bold",
+  },
+
+  parcelaInput: {
+    backgroundColor: "#1a2942",
+    color: "#fff",
+    width: 60,
+    height: 40,
+    textAlign: "center",
+    marginHorizontal: 10,
+    borderRadius: 8,
+    fontSize: 18,
+  },
+
+  bancoContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    marginBottom: 15,
+  },
+
+  bancoBotao: {
+    backgroundColor: "#1a2942",
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    borderRadius: 10,
+    margin: 5,
+  },
+
+  bancoSelecionado: {
+    backgroundColor: "#4CAF50",
+  },
+
+  bancoTexto: {
+    color: "#fff",
+    fontSize: 14,
     fontWeight: "bold",
   },
 
