@@ -89,6 +89,8 @@ export default function CompraParcelada({ navigation }) {
           vencimento: `${dd}/${mm}/${yyyy}`,
           status: "pendente",
           criado_em: serverTimestamp(),
+          databaixa: " ",
+          ativo: 1 ,
         });
       }
 

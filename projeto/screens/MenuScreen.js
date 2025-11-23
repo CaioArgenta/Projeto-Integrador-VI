@@ -11,7 +11,7 @@ import {
 import { createDrawerNavigator } from "@react-navigation/drawer";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
-import { getFirestore, collection, query, where, onSnapshot } from "firebase/firestore";
+import { getFirestore, collection, query, where, onSnapshot, getDocs, addDoc } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 
 import DespesaMensal from "./DespesasMensais";
@@ -31,15 +31,78 @@ function HomeMenu() {
   const [usuarioNome, setUsuarioNome] = useState("");
   const [loading, setLoading] = useState(true);
   const [notificacoesNaoLidas, setNotificacoesNaoLidas] = useState(0);
+  const [parceladasPendentes, setParceladasPendentes] = useState(0);
+  const [calculoEmprestimos, setCalculoEmprestimo] = useState(0);
+  const [calculoFixa, setCalculoFixa] = useState(0);
+  const [calculoVariaveis, setVariaveis] = useState(0);
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
   const db = getFirestore();
   const auth = getAuth();
   const user = auth.currentUser;
 
+  // 🔹 Função para gerar despesas do mês atual automaticamente
+  async function gerarDespesasDoMesAtual() {
+    if (!user) return;
+
+    const hoje = new Date();
+    const mesAtual = String(hoje.getMonth() + 1).padStart(2, "0");
+    const anoAtual = hoje.getFullYear();
+    const mesRefAtual = `${mesAtual}/${anoAtual}`; // Ex: "11/2025"
+
+    try {
+      // Buscar todas despesas ativas do usuário
+      const q = query(
+        collection(db, "despesas_mensais"),
+        where("usuario_id", "==", user.uid),
+        where("ativo", "==", 1)
+      );
+      const snapshot = await getDocs(q);
+      const despesas = snapshot.docs.map((docSnap) => ({
+        id: docSnap.id,
+        ...docSnap.data(),
+      }));
+
+      // Filtrar despesas do mês anterior
+      const mesAnterior = new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1);
+      const mesRefAnterior = `${String(mesAnterior.getMonth() + 1).padStart(2, "0")}/${mesAnterior.getFullYear()}`;
+      const despesasMesAnterior = despesas.filter(d => d.mes_ref === mesRefAnterior);
+
+      // Criar novas despesas para o mês atual, se ainda não existirem
+      for (let desp of despesasMesAnterior) {
+        const jaExiste = despesas.some(d => d.titulo === desp.titulo && d.mes_ref === mesRefAtual);
+        if (!jaExiste) {
+          // Ajustar vencimento para o mesmo dia do mês atual
+          const [dia, , ] = desp.vencimento ? desp.vencimento.split("/") : ["01"];
+          const vencimentoAtual = `${dia}/${mesAtual}/${anoAtual}`;
+
+          await addDoc(collection(db, "despesas_mensais"), {
+            usuario_id: user.uid,
+            titulo: desp.titulo,
+            tipo: desp.tipo,
+            categoria: desp.categoria,
+            valor: desp.valor,
+            status: "pendente",
+            ativo: 1,
+            mes_ref: mesRefAtual,
+            vencimento: vencimentoAtual,
+            criado_em: new Date(),
+          });
+        }
+      }
+    } catch (error) {
+      console.log("Erro ao gerar despesas do mês atual:", error);
+    }
+  }
+
+  // 🔹 useEffect principal
   useEffect(() => {
     if (!user) return;
 
+    // Gerar despesas do mês atual ao entrar
+    gerarDespesasDoMesAtual();
+
+    // Movimentações
     const q = query(collection(db, "movimentacao"), where("usuario_id", "==", user.uid));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const lista = [];
@@ -48,12 +111,14 @@ function HomeMenu() {
       setLoading(false);
     });
 
+    // Usuário
     const unsubUser = onSnapshot(collection(db, "usuarios"), (snapshot) => {
       snapshot.forEach((doc) => {
         if (doc.id === user.uid) setUsuarioNome(doc.data().nome || "Usuário");
       });
     });
 
+    // Notificações
     const qNotif = query(
       collection(db, "notificacoes"),
       where("usuario_id", "==", user.uid),
@@ -70,21 +135,115 @@ function HomeMenu() {
     };
   }, [user]);
 
-  // Animação pulsante quando há notificações novas
+
+ //  SOMA VARIAVEIS 
+  useEffect(() => {
+    if (!user) return;
+
+    const qVariavel = query(
+      collection(db, "despesas_mensais"),
+      where("usuario_id", "==", user.uid),
+      where("tipo", "==", "variavel"),
+      where("status", "==", "pendente"),
+      where("ativo", "==", 1)
+    );
+
+    const unsubVariavel = onSnapshot(qVariavel, (snapshot) => {
+      let total = 0;
+      snapshot.forEach((doc) => {
+        total += Number(doc.data().valor || 0);
+      });
+      setVariaveis(total);
+    });
+
+    return () => unsubVariavel();
+  }, [user]);
+
+
+
+
+
+
+
+
+
+
+
+
+  // 🔹 Soma despesas fixas
+  useEffect(() => {
+    if (!user) return;
+
+    const qFixa = query(
+      collection(db, "despesas_mensais"),
+      where("usuario_id", "==", user.uid),
+      where("tipo", "==", "fixa"),
+      where("status", "==", "pendente"),
+      where("ativo", "==", 1)
+    );
+
+    const unsubFixa = onSnapshot(qFixa, (snapshot) => {
+      let total = 0;
+      snapshot.forEach((doc) => {
+        total += Number(doc.data().valor || 0);
+      });
+      setCalculoFixa(total);
+    });
+
+    return () => unsubFixa();
+  }, [user]);
+
+  // 🔹 Soma empréstimos
+  useEffect(() => {
+    if (!user) return;
+
+    const qEmprestimos = query(
+      collection(db, "parcelas_emprestimo"),
+      where("usuario_id", "==", user.uid),
+      where("status", "==", "pendente"),
+      where("ativo", "==", 1)
+    );
+
+    const unsubEmprestimo = onSnapshot(qEmprestimos, (snapshot) => {
+      let total = 0;
+      snapshot.forEach((doc) => {
+        total += Number(doc.data().valor_parcela || 0);
+      });
+      setCalculoEmprestimo(total);
+    });
+
+    return () => unsubEmprestimo();
+  }, [user]);
+
+  // 🔹 Soma parcelas pendentes
+  useEffect(() => {
+    if (!user) return;
+
+    const qParcelas = query(
+      collection(db, "parcela_compra"),
+      where("usuario_id", "==", user.uid),
+      where("status", "==", "pendente"),
+      where("ativo", "==", 1)
+    );
+
+    const unsubParcelas = onSnapshot(qParcelas, (snapshot) => {
+      let total = 0;
+      snapshot.forEach((doc) => {
+        total += Number(doc.data().valor_parcela || 0);
+      });
+      setParceladasPendentes(total);
+    });
+
+    return () => unsubParcelas();
+  }, [user]);
+
+  // 🔹 Animação notificação
   useEffect(() => {
     if (notificacoesNaoLidas > 0) {
       Animated.loop(
         Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 1.4,
-            duration: 600,
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseAnim, {
-            toValue: 1,
-            duration: 600,
-            useNativeDriver: true,
-          }),
+          Animated.timing(pulseAnim, { toValue: 1.4, duration: 600, useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
         ])
       ).start();
     } else {
@@ -92,19 +251,19 @@ function HomeMenu() {
     }
   }, [notificacoesNaoLidas]);
 
+  // 🔹 Calcula saldo
   const entradas = movimentacoes.filter((m) => m.tipo_movimentacao === "entrada");
   const saidas = movimentacoes.filter((m) => m.tipo_movimentacao === "saida");
-  const saldo =
-    entradas.reduce((acc, item) => acc + Number(item.valor), 0) -
-    saidas.reduce((acc, item) => acc + Number(item.valor), 0);
+  const saldo = entradas.reduce((acc, item) => acc + Number(item.valor), 0) -
+                saidas.reduce((acc, item) => acc + Number(item.valor), 0);
 
+  // 🔹 Totais
   const totais = [
-    { name: "Fixas", value: movimentacoes.filter((m) => m.categoria === "fixa").reduce((a, i) => a + Number(i.valor), 0), color: "#3b82f6" },
-    { name: "Variáveis", value: movimentacoes.filter((m) => m.categoria === "variavel").reduce((a, i) => a + Number(i.valor), 0), color: "#facc15" },
-    { name: "Parceladas", value: movimentacoes.filter((m) => m.categoria === "parcelada").reduce((a, i) => a + Number(i.valor), 0), color: "#10b981" },
-    { name: "Empréstimos", value: movimentacoes.filter((m) => m.categoria === "emprestimo").reduce((a, i) => a + Number(i.valor), 0), color: "#f87171" },
+    { name: "Fixas", value: calculoFixa, color: "#3b82f6" },
+    { name: "Variáveis", value: calculoVariaveis, color:  "#facc15" },
+    { name: "Parceladas", value: parceladasPendentes, color: "#10b981" },
+    { name: "Empréstimos", value: calculoEmprestimos, color: "#f87171" },
   ];
-
   const totalDespesas = totais.reduce((acc, t) => acc + t.value, 0);
 
   const historicoOrdenado = [...movimentacoes].sort(
@@ -132,30 +291,23 @@ function HomeMenu() {
             <Text style={styles.subtitle}>Bem-vindo ao Grana+</Text>
           </View>
         </View>
-
-        {/* Ícone de notificação com badge pulsante */}
-        <TouchableOpacity
-          style={styles.notificationContainer}
-          onPress={() => navigation.navigate("Notificações")}
-        >
+        <TouchableOpacity style={styles.notificationContainer} onPress={() => navigation.navigate("Notificações")}>
           <Ionicons name="notifications-outline" size={40} color="#fff" />
-        {notificacoesNaoLidas > 0 && (
-  <Animated.View style={[styles.notificationBadge, { transform: [{ scale: pulseAnim }] }]}>
-    <Text style={styles.notificationCount}>
-      {notificacoesNaoLidas > 9 ? "9+" : notificacoesNaoLidas}
-    </Text>
-  </Animated.View>
-)}
+          {notificacoesNaoLidas > 0 && (
+            <Animated.View style={[styles.notificationBadge, { transform: [{ scale: pulseAnim }] }]}>
+              <Text style={styles.notificationCount}>{notificacoesNaoLidas > 9 ? "9+" : notificacoesNaoLidas}</Text>
+            </Animated.View>
+          )}
         </TouchableOpacity>
       </View>
 
-      {/* Card de Saldo */}
+      {/* Card Saldo */}
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Saldo Atual</Text>
         <Text style={styles.cardValue}>R$ {saldo.toFixed(2)}</Text>
       </View>
 
-      {/* Despesas Mensais */}
+      {/* Categorias */}
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Categorias</Text>
         {totais.map((item, index) => (
@@ -169,10 +321,7 @@ function HomeMenu() {
           <Text style={styles.itemLabel}>Total</Text>
           <Text style={styles.itemValue}>R$ {totalDespesas.toFixed(2)}</Text>
         </View>
-        <TouchableOpacity
-          style={styles.viewChartButton}
-          onPress={() => navigation.navigate("Dashboard")}
-        >
+        <TouchableOpacity style={styles.viewChartButton} onPress={() => navigation.navigate("Dashboard")}>
           <Text style={styles.viewChartText}>Visualizar Gráfico</Text>
         </TouchableOpacity>
       </View>
@@ -180,35 +329,23 @@ function HomeMenu() {
       {/* Histórico */}
       <View style={styles.historicoContainer}>
         <Text style={styles.historicoTitulo}>📊 Histórico de Movimentações</Text>
-
         {historicoLimitado.length === 0 ? (
           <Text style={{ color: "#aaa", textAlign: "center" }}>Nenhuma movimentação encontrada.</Text>
         ) : (
           historicoLimitado.map((mov) => (
             <View key={mov.id} style={styles.historicoCard}>
               <View style={styles.historicoInfo}>
-                <Text style={styles.historicoDesc}>
-                  {mov.icone_selecionado || "💰"} {mov.descricao}
-                </Text>
+                <Text style={styles.historicoDesc}>{mov.icone_selecionado || "💰"} {mov.descricao}</Text>
                 <Text style={styles.historicoData}>{mov.data}</Text>
               </View>
-              <Text
-                style={[
-                  styles.historicoValor,
-                  { color: mov.tipo_movimentacao === "entrada" ? "#10b981" : "#f87171" },
-                ]}
-              >
+              <Text style={[styles.historicoValor, { color: mov.tipo_movimentacao === "entrada" ? "#10b981" : "#f87171" }]}>
                 {mov.tipo_movimentacao === "entrada" ? "+" : "-"}R$ {Number(mov.valor).toFixed(2)}
               </Text>
             </View>
           ))
         )}
-
         {historicoOrdenado.length > 5 && (
-          <TouchableOpacity
-            style={styles.verMaisButton}
-            onPress={() => navigation.navigate("Planilha de Movimentações")}
-          >
+          <TouchableOpacity style={styles.verMaisButton} onPress={() => navigation.navigate("Planilha de Movimentações")}>
             <Text style={styles.verMaisText}>Ver todas as movimentações</Text>
           </TouchableOpacity>
         )}
@@ -237,9 +374,9 @@ export default function MenuScreen() {
       }}
     >
       <Drawer.Screen name="Início" component={HomeMenu} />
-       <Drawer.Screen name="Registrar Despesas" component={DespesaMensal} />
+      <Drawer.Screen name="Registrar Despesas" component={DespesaMensal} />
       <Drawer.Screen name="Registrar Movimentação" component={FormMovimentacao} />
-       <Drawer.Screen name="Registrar Compras" component={CompraParcelada} />
+      <Drawer.Screen name="Registrar Compras" component={CompraParcelada} />
       <Drawer.Screen name="Registrar Empréstimos" component={MovEmprest} />
       <Drawer.Screen name="Planilha de Movimentações" component={PlanilhaMov} />
       <Drawer.Screen name="Configurações" component={Configuracoes} />

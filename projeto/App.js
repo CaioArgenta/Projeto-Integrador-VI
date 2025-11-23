@@ -9,7 +9,9 @@ import ResetsenhaScreen from "./screens/ResetsenhaScreen";
 import MenuScreen from "./screens/MenuScreen";
 import FormMovimentacao from "./screens/FormMovimentacao";
 import Telaparcelas from "./screens/Telaparcelas";
-
+import TelaEmprestimo from "./screens/TelaEmprestimo";
+import TelaFixa from "./screens/TelaFixa";
+import TelaVariavel from "./screens/TelaVariavel";
 
 const Stack = createNativeStackNavigator();
 
@@ -24,6 +26,9 @@ export default function App() {
         <Stack.Screen name="Menu" component={MenuScreen} options={{ headerShown: false }} />
         <Stack.Screen name="RegistrarMovimentacao" component={FormMovimentacao} options={{ headerShown: false }} />
          <Stack.Screen name="Telaparcelas" component={Telaparcelas} options={{ headerShown: false }} />
+         <Stack.Screen name="TelaEmprestimo" component={TelaEmprestimo} options={{ headerShown: false }} />
+         <Stack.Screen name="TelaFixa" component={TelaFixa} options={{ headerShown: false }} />
+         <Stack.Screen name="TelaVariavel" component={TelaVariavel} options={{ headerShown: false }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

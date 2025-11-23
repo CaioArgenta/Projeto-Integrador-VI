@@ -15,15 +15,13 @@ import {
   query,
   where,
   doc,
-  getDoc,
-  setDoc,
   onSnapshot,
   updateDoc,
 } from "firebase/firestore";
 
 import { auth, db } from "../firebaseConfig";
 
-export default function TabelaParcelas() {
+export default function TelaEmprestimo() {
   const [dados, setDados] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -32,8 +30,7 @@ export default function TabelaParcelas() {
   const COL_WIDTH = {
     valor: 160,
     parcela: 130,
-    produto: 260,
-    banco: 200,
+    tipo: 200,
     status: 160,
     vencimento: 200,
     pagamento: 200,
@@ -71,11 +68,9 @@ export default function TabelaParcelas() {
     return isNaN(d) ? null : d;
   }
 
-  // Usar onSnapshot para realtime e manter unsubscribe
   useEffect(() => {
     const unsub = carregarParcelasRealtime();
     return () => unsub && unsub();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function carregarParcelasRealtime() {
@@ -87,56 +82,49 @@ export default function TabelaParcelas() {
     }
 
     setLoading(true);
-    const q = query(
-      collection(db, "parcela_compra"),
+
+    const q2 = query(
+      collection(db, "parcelas_emprestimo"),
       where("usuario_id", "==", user.uid)
     );
 
     const unsubscribe = onSnapshot(
-      q,
+      q2,
       async (snapshot) => {
         try {
           const lista = [];
+
           for (let dParc of snapshot.docs) {
             const p = dParc.data();
 
-            // carregar dados da compra apenas se existir compra_id
-            let compra = {};
-            if (p.compra_id) {
-              try {
-                const refCompra = doc(db, "compras", p.compra_id);
-                const snapCompra = await getDoc(refCompra);
-                compra = snapCompra.exists() ? snapCompra.data() : {};
-              } catch (err) {
-                console.log("Erro ao buscar compra:", err);
-                compra = {};
-              }
-            }
-
+            // STATUS
             let status = "Aberto";
             const venc = parseDateDDMMYYYY(p.vencimento);
             const hojeLimpo = new Date(new Date().toDateString());
 
-            if (p.status === "pago" || (p.databaixa && String(p.databaixa).trim() !== "")) status = "Pago";
-            else if (venc && venc < hojeLimpo) status = "Em atraso";
+            if (p.status === "pago" || (p.databaixa && p.databaixa.trim() !== ""))
+              status = "Pago";
+            else if (venc && venc < hojeLimpo)
+              status = "Em atraso";
+
+            // TIPO
+            let tipoTexto = "—";
+            if (p.tipo === 1) tipoTexto = "Peguei emprestado";
+            if (p.tipo === 2) tipoTexto = "Emprestei dinheiro";
 
             lista.push({
               id: dParc.id,
               ativo: p.ativo ?? 1,
-              valor:
-                typeof p.valor_parcela === "number"
-                  ? `R$ ${p.valor_parcela.toFixed(2)}`
-                  : p.valor_parcela ?? "-",
-              parcela: `${p.numero_parcela ?? "-"}/${compra.parcelas ?? "-"}`,
-              produto: compra.titulo ?? "-",
-              banco: compra.conta ?? "-",
+              valor: p.valor_parcela ? `R$ ${p.valor_parcela.toFixed(2)}` : "-",
+              parcela: p.numero_parcela ?? "-",
+              tipo: tipoTexto,
               status,
               vencimento: p.vencimento ?? "-",
               pagamento: p.databaixa ?? "-",
-              compra_id: p.compra_id,
             });
           }
 
+          // Ordenar por vencimento
           lista.sort((a, b) => {
             const da = parseDateDDMMYYYY(a.vencimento) ?? new Date(0);
             const dbb = parseDateDDMMYYYY(b.vencimento) ?? new Date(0);
@@ -144,8 +132,8 @@ export default function TabelaParcelas() {
           });
 
           setDados(lista);
-        } catch (e) {
-          console.log("Erro processando snapshot:", e);
+        } catch (err) {
+          console.log("Erro ao processar empréstimo:", err);
         } finally {
           setLoading(false);
         }
@@ -159,7 +147,7 @@ export default function TabelaParcelas() {
     return unsubscribe;
   }
 
-  // filtra somente ativo === 1 e pelo mês
+  // FILTRAR por ativo = 1 e mês/ano
   const dadosFiltrados = dados.filter((item) => {
     if (item.ativo !== 1) return false;
     const d = parseDateDDMMYYYY(item.vencimento);
@@ -174,13 +162,10 @@ export default function TabelaParcelas() {
 
   async function alterarStatus(item) {
     try {
-      const ref = doc(db, "parcela_compra", item.id);
+      const ref = doc(db, "parcelas_emprestimo", item.id);
 
       if (item.status === "Pago") {
-        await updateDoc(ref, {
-          databaixa: "",
-          status: "aberto",
-        });
+        await updateDoc(ref, { databaixa: "", status: "aberto" });
       } else {
         const hoje = new Date();
         await updateDoc(ref, {
@@ -190,45 +175,19 @@ export default function TabelaParcelas() {
           status: "pago",
         });
       }
-
-      // onSnapshot já vai atualizar a lista, mas mantemos um fetch de segurança
-      // carregarParcelasRealtime() retorna unsubscribe; não chamamos aqui.
-    } catch (error) {
-      console.log("Erro alterarStatus:", error);
+    } catch (e) {
       Alert.alert("Erro", "Não foi possível alterar o status.");
     }
   }
 
-  function confirmarExcluir(item) {
-    Alert.alert(
-      "Remover da visualização",
-      `Deseja remover a parcela ${item.parcela} da visualização?`,
-      [
-        { text: "Cancelar", style: "cancel" },
-        {
-          text: "Remover",
-          style: "destructive",
-          onPress: () => excluirParcela(item.id),
-        },
-      ]
-    );
-  }
-
-  // usa setDoc com merge para garantir que o campo seja criado/atualizado
   async function excluirParcela(id) {
     try {
-      const ref = doc(db, "parcela_compra", id);
+      const ref = doc(db, "parcelas_emprestimo", id);
+      await updateDoc(ref, { ativo: 2 });
 
-      // setDoc com merge: true garante gravação mesmo se campo não existir
-      await setDoc(ref, { ativo: 2 }, { merge: true });
-
-      // otimista: remove do state local para sumir da tela imediatamente
       setDados((prev) => prev.filter((p) => p.id !== id));
-
-      Alert.alert("Sucesso", "Parcela removida da tela.");
-    } catch (error) {
-      console.log("ERRO AO MARCAR ATIVO=2:", error);
-      Alert.alert("Erro", "Não foi possível remover da visualização.");
+    } catch (e) {
+      Alert.alert("Erro", "Não foi possível remover.");
     }
   }
 
@@ -238,6 +197,7 @@ export default function TabelaParcelas() {
         <Ionicons name="arrow-back" size={28} color="#fff" />
       </TouchableOpacity>
 
+      {/* HEADER MÊS */}
       <View
         style={{
           flexDirection: "row",
@@ -266,7 +226,8 @@ export default function TabelaParcelas() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView horizontal contentContainerStyle={{ paddingHorizontal: 30 }}>
+      {/* TABELA */}
+      <ScrollView horizontal contentContainerStyle={{ paddingHorizontal: 150 }}>
         <View style={{ minWidth: TOTAL_WIDTH }}>
           <View
             style={{
@@ -277,8 +238,7 @@ export default function TabelaParcelas() {
           >
             <Text style={[styles.headerCell, { width: COL_WIDTH.valor }]}>Valor</Text>
             <Text style={[styles.headerCell, { width: COL_WIDTH.parcela }]}>Parcela</Text>
-            <Text style={[styles.headerCell, { width: COL_WIDTH.produto }]}>Produto</Text>
-            <Text style={[styles.headerCell, { width: COL_WIDTH.banco }]}>Banco</Text>
+            <Text style={[styles.headerCell, { width: COL_WIDTH.tipo }]}>Tipo</Text>
             <Text style={[styles.headerCell, { width: COL_WIDTH.status }]}>Status</Text>
             <Text style={[styles.headerCell, { width: COL_WIDTH.vencimento }]}>
               Vencimento
@@ -295,7 +255,7 @@ export default function TabelaParcelas() {
             </View>
           ) : dadosFiltrados.length === 0 ? (
             <View style={{ padding: 20 }}>
-              <Text style={{ color: "#fff" }}>Nenhuma parcela encontrada.</Text>
+              <Text style={{ color: "#fff" }}>Nenhum registro encontrado.</Text>
             </View>
           ) : (
             dadosFiltrados.map((item) => (
@@ -309,21 +269,10 @@ export default function TabelaParcelas() {
                 }}
               >
                 <Text style={[styles.cell, { width: COL_WIDTH.valor }]}>{item.valor}</Text>
-
                 <Text style={[styles.cell, { width: COL_WIDTH.parcela }]}>
                   {item.parcela}
                 </Text>
-
-                <Text
-                  style={[styles.cell, { width: COL_WIDTH.produto }]}
-                  numberOfLines={2}
-                >
-                  {item.produto}
-                </Text>
-
-                <Text style={[styles.cell, { width: COL_WIDTH.banco }]}>
-                  {item.banco}
-                </Text>
+                <Text style={[styles.cell, { width: COL_WIDTH.tipo }]}>{item.tipo}</Text>
 
                 <TouchableOpacity
                   onPress={() => alterarStatus(item)}
@@ -355,7 +304,6 @@ export default function TabelaParcelas() {
                   }}
                 >
                   <TouchableOpacity onPress={() => excluirParcela(item.id)}>
-
                     <AntDesign name="delete" size={22} color="#fff" />
                   </TouchableOpacity>
                 </View>

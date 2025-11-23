@@ -14,7 +14,7 @@ import { auth, db } from "../firebaseConfig";
 
 export default function RegistrarEmprestimo({ navigation }) {
   const [titulo, setTitulo] = useState("");
-  const [tipo, setTipo] = useState("peguei");
+  const [tipo, setTipo] = useState(1); // 1 = peguei, 2 = emprestei
   const [valorTotal, setValorTotal] = useState("");
   const [parcelas, setParcelas] = useState(1);
   const [conta, setConta] = useState("");
@@ -37,6 +37,20 @@ export default function RegistrarEmprestimo({ navigation }) {
     "Banco do Brasil",
   ];
 
+  // 👉 Função para adicionar meses corretamente
+  const addMes = (data, meses) => {
+    const nova = new Date(data);
+    nova.setMonth(nova.getMonth() + meses);
+
+    if (nova.getDate() !== data.getDate()) {
+      nova.setDate(0);
+    }
+
+    return nova;
+  };
+
+  const formatarData = (data) => data.toLocaleDateString("pt-BR");
+
   const handleSalvarEmprestimo = async () => {
     if (!titulo || !valorTotal || !conta) {
       Alert.alert("Atenção", "Preencha todos os campos obrigatórios!");
@@ -47,30 +61,37 @@ export default function RegistrarEmprestimo({ navigation }) {
       const user = auth.currentUser;
       if (!user) return;
 
+      // 🔥 Criar empréstimo
       const emprestimoRef = await addDoc(collection(db, "emprestimos"), {
         usuario_id: user.uid,
         titulo,
-        tipo,
+        tipo, // 1 = peguei | 2 = emprestei
         valor_total: Number(valorTotal),
         parcelas,
         conta,
         icone: iconeSelecionado,
         observacao,
+        ativo: 1,
         data_registro: dataHoje,
         criado_em: serverTimestamp(),
       });
 
+      // 🔥 Criar parcelas
       const valorParcela = Number(valorTotal) / parcelas;
 
       for (let i = 1; i <= parcelas; i++) {
+        const dataVenc = addMes(hoje, i - 1);
+        const vencimentoFormatado = formatarData(dataVenc);
+
         await addDoc(collection(db, "parcelas_emprestimo"), {
           emprestimo_id: emprestimoRef.id,
           usuario_id: user.uid,
           numero_parcela: i,
           valor_parcela: Number(valorParcela.toFixed(2)),
-          vencimento: dataHoje,
+          vencimento: vencimentoFormatado,
           status: "pendente",
-          tipo,
+          tipo, // 👈 numérico também
+          ativo: 1,
           criado_em: serverTimestamp(),
         });
       }
@@ -116,7 +137,7 @@ export default function RegistrarEmprestimo({ navigation }) {
       <Text style={styles.label}>Título *</Text>
       <TextInput
         style={styles.input}
-        placeholder="Ex: Empréstimo Nubank / Dinheiro emprestado ao João"
+        placeholder="Ex: Empréstimo Nubank / Dinheiro emprestado"
         placeholderTextColor="#999"
         value={titulo}
         onChangeText={setTitulo}
@@ -126,18 +147,15 @@ export default function RegistrarEmprestimo({ navigation }) {
       <Text style={styles.label}>Tipo *</Text>
       <View style={styles.tipoContainer}>
         <TouchableOpacity
-          style={[styles.tipoBotao, tipo === "peguei" && styles.tipoSelecionado]}
-          onPress={() => setTipo("peguei")}
+          style={[styles.tipoBotao, tipo === 1 && styles.tipoSelecionado]}
+          onPress={() => setTipo(1)}
         >
           <Text style={styles.tipoTexto}>Peguei emprestado</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[
-            styles.tipoBotao,
-            tipo === "emprestei" && styles.tipoSelecionado,
-          ]}
-          onPress={() => setTipo("emprestei")}
+          style={[styles.tipoBotao, tipo === 2 && styles.tipoSelecionado]}
+          onPress={() => setTipo(2)}
         >
           <Text style={styles.tipoTexto}>Emprestei dinheiro</Text>
         </TouchableOpacity>
@@ -159,7 +177,7 @@ export default function RegistrarEmprestimo({ navigation }) {
       <View style={styles.parcelaBox}>
         <TouchableOpacity
           style={styles.parcelaButton}
-          onPress={() => setParcelas((prev) => (prev > 1 ? prev - 1 : prev))}
+          onPress={() => setParcelas((p) => (p > 1 ? p - 1 : p))}
         >
           <Text style={styles.parcelaButtonText}>-</Text>
         </TouchableOpacity>
@@ -176,7 +194,7 @@ export default function RegistrarEmprestimo({ navigation }) {
 
         <TouchableOpacity
           style={styles.parcelaButton}
-          onPress={() => setParcelas((prev) => (prev < 60 ? prev + 1 : prev))}
+          onPress={() => setParcelas((p) => (p < 60 ? p + 1 : p))}
         >
           <Text style={styles.parcelaButtonText}>+</Text>
         </TouchableOpacity>
@@ -203,7 +221,7 @@ export default function RegistrarEmprestimo({ navigation }) {
       <Text style={styles.label}>Observação (opcional)</Text>
       <TextInput
         style={[styles.input, { height: 80 }]}
-        placeholder="Ex: Empréstimo para ajudar no aluguel"
+        placeholder="Ex: Empréstimo para aluguel"
         placeholderTextColor="#999"
         value={observacao}
         onChangeText={setObservacao}
@@ -256,7 +274,10 @@ const styles = StyleSheet.create({
   iconeSelecionado: { backgroundColor: "#4CAF50" },
   iconeTexto: { fontSize: 26 },
 
-  tipoContainer: { flexDirection: "row", justifyContent: "space-between" },
+  tipoContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
 
   tipoBotao: {
     flex: 1,
