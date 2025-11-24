@@ -1,4 +1,3 @@
-// firebaseConfig.js
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
@@ -13,13 +12,11 @@ const firebaseConfig = {
   measurementId: "G-NNYRN5HVE1",
 };
 
-// Inicializa o app do Firebase
 const app = initializeApp(firebaseConfig);
 
-// Inicializa os serviços do Firebase
+
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-console.log("🔥 Firebase inicializado com sucesso:", app.name);
 
 export { auth, db };
