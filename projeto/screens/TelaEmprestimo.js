@@ -97,7 +97,7 @@ export default function TelaEmprestimo() {
           for (let dParc of snapshot.docs) {
             const p = dParc.data();
 
-            // STATUS
+
             let status = "Aberto";
             const venc = parseDateDDMMYYYY(p.vencimento);
             const hojeLimpo = new Date(new Date().toDateString());
@@ -107,7 +107,7 @@ export default function TelaEmprestimo() {
             else if (venc && venc < hojeLimpo)
               status = "Em atraso";
 
-            // TIPO
+            
             let tipoTexto = "—";
             if (p.tipo === 1) tipoTexto = "Peguei emprestado";
             if (p.tipo === 2) tipoTexto = "Emprestei dinheiro";
@@ -124,7 +124,7 @@ export default function TelaEmprestimo() {
             });
           }
 
-          // Ordenar por vencimento
+        
           lista.sort((a, b) => {
             const da = parseDateDDMMYYYY(a.vencimento) ?? new Date(0);
             const dbb = parseDateDDMMYYYY(b.vencimento) ?? new Date(0);
@@ -147,7 +147,7 @@ export default function TelaEmprestimo() {
     return unsubscribe;
   }
 
-  // FILTRAR por ativo = 1 e mês/ano
+
   const dadosFiltrados = dados.filter((item) => {
     if (item.ativo !== 1) return false;
     const d = parseDateDDMMYYYY(item.vencimento);
@@ -197,7 +197,7 @@ export default function TelaEmprestimo() {
         <Ionicons name="arrow-back" size={28} color="#fff" />
       </TouchableOpacity>
 
-      {/* HEADER MÊS */}
+      {}
       <View
         style={{
           flexDirection: "row",
@@ -226,7 +226,7 @@ export default function TelaEmprestimo() {
         </TouchableOpacity>
       </View>
 
-      {/* TABELA */}
+      {}
       <ScrollView horizontal contentContainerStyle={{ paddingHorizontal: 150 }}>
         <View style={{ minWidth: TOTAL_WIDTH }}>
           <View

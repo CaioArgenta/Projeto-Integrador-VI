@@ -30,7 +30,7 @@ export default function CompraParcelada({ navigation }) {
     "Banco do Brasil",
   ];
 
-  // Data automática (apenas exibição, não usada como vencimento fixo)
+
   const hoje = new Date();
   const dia = String(hoje.getDate()).padStart(2, "0");
   const mes = String(hoje.getMonth() + 1).padStart(2, "0");
@@ -56,7 +56,7 @@ export default function CompraParcelada({ navigation }) {
       const user = auth.currentUser;
       if (!user) return;
 
-      // Salvar a compra principal
+
       const compraRef = await addDoc(collection(db, "compras"), {
         usuario_id: user.uid,
         titulo,
@@ -65,11 +65,11 @@ export default function CompraParcelada({ navigation }) {
         conta,
         icone: iconeSelecionado,
         criado_em: serverTimestamp(),
+         ativo: 1,
       });
 
       const valorParcela = Number(valorTotal) / parcelasNum;
 
-      // 2️⃣ Criar parcelas com vencimento correto mês a mês
       let dataBase = new Date();
       let diaCompra = dataBase.getDate();
 

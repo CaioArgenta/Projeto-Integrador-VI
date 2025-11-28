@@ -41,17 +41,17 @@ function HomeMenu() {
   const auth = getAuth();
   const user = auth.currentUser;
 
-  // 🔹 Função para gerar despesas do mês atual automaticamente
+  
   async function gerarDespesasDoMesAtual() {
     if (!user) return;
 
     const hoje = new Date();
     const mesAtual = String(hoje.getMonth() + 1).padStart(2, "0");
     const anoAtual = hoje.getFullYear();
-    const mesRefAtual = `${mesAtual}/${anoAtual}`; // Ex: "11/2025"
+    const mesRefAtual = `${mesAtual}/${anoAtual}`; 
 
     try {
-      // Buscar todas despesas ativas do usuário
+   
       const q = query(
         collection(db, "despesas_mensais"),
         where("usuario_id", "==", user.uid),
@@ -72,7 +72,7 @@ function HomeMenu() {
       for (let desp of despesasMesAnterior) {
         const jaExiste = despesas.some(d => d.titulo === desp.titulo && d.mes_ref === mesRefAtual);
         if (!jaExiste) {
-          // Ajustar vencimento para o mesmo dia do mês atual
+          
           const [dia, , ] = desp.vencimento ? desp.vencimento.split("/") : ["01"];
           const vencimentoAtual = `${dia}/${mesAtual}/${anoAtual}`;
 
@@ -95,14 +95,14 @@ function HomeMenu() {
     }
   }
 
-  // 🔹 useEffect principal
+  
   useEffect(() => {
     if (!user) return;
 
-    // Gerar despesas do mês atual ao entrar
+  
     gerarDespesasDoMesAtual();
 
-    // Movimentações
+
     const q = query(collection(db, "movimentacao"), where("usuario_id", "==", user.uid));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const lista = [];
@@ -111,14 +111,14 @@ function HomeMenu() {
       setLoading(false);
     });
 
-    // Usuário
+
     const unsubUser = onSnapshot(collection(db, "usuarios"), (snapshot) => {
       snapshot.forEach((doc) => {
         if (doc.id === user.uid) setUsuarioNome(doc.data().nome || "Usuário");
       });
     });
 
-    // Notificações
+
     const qNotif = query(
       collection(db, "notificacoes"),
       where("usuario_id", "==", user.uid),
@@ -170,7 +170,7 @@ function HomeMenu() {
 
 
 
-  // 🔹 Soma despesas fixas
+  // Soma despesas fixas
   useEffect(() => {
     if (!user) return;
 
@@ -193,7 +193,7 @@ function HomeMenu() {
     return () => unsubFixa();
   }, [user]);
 
-  // 🔹 Soma empréstimos
+  //  Soma empréstimos
   useEffect(() => {
     if (!user) return;
 
@@ -215,7 +215,7 @@ function HomeMenu() {
     return () => unsubEmprestimo();
   }, [user]);
 
-  // 🔹 Soma parcelas pendentes
+  // Soma parcelas pendentes
   useEffect(() => {
     if (!user) return;
 
@@ -237,7 +237,7 @@ function HomeMenu() {
     return () => unsubParcelas();
   }, [user]);
 
-  // 🔹 Animação notificação
+
   useEffect(() => {
     if (notificacoesNaoLidas > 0) {
       Animated.loop(
@@ -251,13 +251,13 @@ function HomeMenu() {
     }
   }, [notificacoesNaoLidas]);
 
-  // 🔹 Calcula saldo
+  // Calcula saldo
   const entradas = movimentacoes.filter((m) => m.tipo_movimentacao === "entrada");
   const saidas = movimentacoes.filter((m) => m.tipo_movimentacao === "saida");
   const saldo = entradas.reduce((acc, item) => acc + Number(item.valor), 0) -
                 saidas.reduce((acc, item) => acc + Number(item.valor), 0);
 
-  // 🔹 Totais
+  //  Totais
   const totais = [
     { name: "Fixas", value: calculoFixa, color: "#3b82f6" },
     { name: "Variáveis", value: calculoVariaveis, color:  "#facc15" },
@@ -282,7 +282,7 @@ function HomeMenu() {
 
   return (
     <ScrollView style={styles.container}>
-      {/* Header */}
+      {}
       <View style={styles.headerTop}>
         <View style={styles.profileSection}>
           <Ionicons name="person-circle-outline" size={48} color="#fff" />
@@ -301,13 +301,13 @@ function HomeMenu() {
         </TouchableOpacity>
       </View>
 
-      {/* Card Saldo */}
+      {}
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Saldo Atual</Text>
         <Text style={styles.cardValue}>R$ {saldo.toFixed(2)}</Text>
       </View>
 
-      {/* Categorias */}
+      {}
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Categorias</Text>
         {totais.map((item, index) => (
@@ -326,7 +326,7 @@ function HomeMenu() {
         </TouchableOpacity>
       </View>
 
-      {/* Histórico */}
+      {}
       <View style={styles.historicoContainer}>
         <Text style={styles.historicoTitulo}>📊 Histórico de Movimentações</Text>
         {historicoLimitado.length === 0 ? (

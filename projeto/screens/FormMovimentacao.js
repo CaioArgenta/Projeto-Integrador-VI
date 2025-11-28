@@ -18,7 +18,7 @@ export default function FormMovimentacao({ navigation }) {
   const [descricao, setDescricao] = useState("");
   const [iconeSelecionado, setIconeSelecionado] = useState("💼");
 
-  // Data automática formatada: dd/mm/yyyy
+
   const hoje = new Date();
   const dia = String(hoje.getDate()).padStart(2, "0");
   const mes = String(hoje.getMonth() + 1).padStart(2, "0");
@@ -40,10 +40,10 @@ export default function FormMovimentacao({ navigation }) {
         return;
       }
 
-      // Salvar no Firestore
+  
       await addDoc(collection(db, "movimentacao"), {
         usuario_id: user.uid,
-        tipo_movimentacao: tipoMovimentacao, // entrada ou saída
+        tipo_movimentacao: tipoMovimentacao, 
         valor: Number(valor),
         data: dataHoje,
         descricao: descricao || "",
@@ -70,7 +70,7 @@ export default function FormMovimentacao({ navigation }) {
 
       <Text style={styles.titulo}>Entrada / Saída</Text>
 
-      {/* Entrada / Saída */}
+      {}
       <View style={styles.tipoContainer}>
         <TouchableOpacity
           style={[
@@ -111,7 +111,7 @@ export default function FormMovimentacao({ navigation }) {
         ))}
       </View>
 
-      {/* Valor */}
+      {}
       <Text style={styles.label}>Valor (R$) *</Text>
       <TextInput
         style={styles.input}
@@ -122,11 +122,11 @@ export default function FormMovimentacao({ navigation }) {
         onChangeText={setValor}
       />
 
-      {/* Data automática */}
+      {}
       <Text style={styles.label}>Data</Text>
       <TextInput style={styles.input} value={dataHoje} editable={false} />
 
-      {/* Descrição */}
+      {}
       <Text style={styles.label}>Descrição (opcional)</Text>
       <TextInput
         style={[styles.input, { height: 80 }]}
@@ -137,7 +137,7 @@ export default function FormMovimentacao({ navigation }) {
         onChangeText={setDescricao}
       />
 
-      {/* Botão salvar */}
+      {}
       <TouchableOpacity style={styles.botao} onPress={handleSalvar}>
         <Text style={styles.textoBotao}>Salvar Movimentação</Text>
       </TouchableOpacity>
@@ -156,7 +156,7 @@ const styles = StyleSheet.create({
     marginVertical: 20,
   },
 
-  // Tipo
+
   tipoContainer: {
     flexDirection: "row",
     justifyContent: "space-around",
@@ -173,7 +173,7 @@ const styles = StyleSheet.create({
   tipoSelecionadoEntrada: { backgroundColor: "#2ecc71" },
   tipoSelecionadoSaida: { backgroundColor: "#e74c3c" },
 
-  // Ícones
+ 
   label: { color: "#fff", fontSize: 16, marginBottom: 6 },
   iconeContainer: {
     flexDirection: "row",
@@ -190,7 +190,7 @@ const styles = StyleSheet.create({
   iconeSelecionado: { backgroundColor: "#4CAF50" },
   iconeTexto: { fontSize: 26 },
 
-  // Inputs
+
   input: {
     backgroundColor: "#1a2942",
     borderRadius: 10,
@@ -201,7 +201,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
 
-  // Botão
+ 
   botao: {
     backgroundColor: "#4CAF50",
     padding: 15,

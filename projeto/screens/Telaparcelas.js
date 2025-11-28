@@ -71,11 +71,11 @@ export default function TabelaParcelas() {
     return isNaN(d) ? null : d;
   }
 
-  // Usar onSnapshot para realtime e manter unsubscribe
+
   useEffect(() => {
     const unsub = carregarParcelasRealtime();
     return () => unsub && unsub();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, []);
 
   function carregarParcelasRealtime() {
@@ -100,7 +100,7 @@ export default function TabelaParcelas() {
           for (let dParc of snapshot.docs) {
             const p = dParc.data();
 
-            // carregar dados da compra apenas se existir compra_id
+         
             let compra = {};
             if (p.compra_id) {
               try {
@@ -159,7 +159,7 @@ export default function TabelaParcelas() {
     return unsubscribe;
   }
 
-  // filtra somente ativo === 1 e pelo mês
+ 
   const dadosFiltrados = dados.filter((item) => {
     if (item.ativo !== 1) return false;
     const d = parseDateDDMMYYYY(item.vencimento);
@@ -191,8 +191,7 @@ export default function TabelaParcelas() {
         });
       }
 
-      // onSnapshot já vai atualizar a lista, mas mantemos um fetch de segurança
-      // carregarParcelasRealtime() retorna unsubscribe; não chamamos aqui.
+     
     } catch (error) {
       console.log("Erro alterarStatus:", error);
       Alert.alert("Erro", "Não foi possível alterar o status.");
@@ -214,15 +213,15 @@ export default function TabelaParcelas() {
     );
   }
 
-  // usa setDoc com merge para garantir que o campo seja criado/atualizado
+
   async function excluirParcela(id) {
     try {
       const ref = doc(db, "parcela_compra", id);
 
-      // setDoc com merge: true garante gravação mesmo se campo não existir
+      
       await setDoc(ref, { ativo: 2 }, { merge: true });
 
-      // otimista: remove do state local para sumir da tela imediatamente
+   
       setDados((prev) => prev.filter((p) => p.id !== id));
 
       Alert.alert("Sucesso", "Parcela removida da tela.");

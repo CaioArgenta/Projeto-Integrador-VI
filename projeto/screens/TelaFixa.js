@@ -62,7 +62,7 @@ export default function TabelaDespesas() {
     }
   }
 
-  // Cria string MM/YYYY para filtro
+  
   const mesRefStr = `${String(mesAtual + 1).padStart(2, "0")}/${anoAtual}`;
 
   useEffect(() => {
@@ -107,7 +107,7 @@ export default function TabelaDespesas() {
               tipo: p.tipo ?? "-",
               categoria: p.categoria ?? "-",
               status,
-              registro: p.vencimento ?? "-", // pode usar vencimento
+              registro: p.vencimento ?? "-", 
               pagamento: p.databaixa ?? "-",
             };
           });

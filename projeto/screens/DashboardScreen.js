@@ -94,7 +94,7 @@ export default function DashboardScreen() {
 
 
 
-  // 🔥 SOMA DOS EMPRÉSTIMOS PENDENTES
+  // SOMA DOS EMPRÉSTIMOS PENDENTES
   useEffect(() => {
     if (!user) return;
 
@@ -116,7 +116,7 @@ export default function DashboardScreen() {
     return () => unsubEmprestimo();
   }, [user]);
 
-  // 🔥 SOMA DAS PARCELAS PENDENTES DE COMPRAS
+  // SOMA DAS PARCELAS PENDENTES DE COMPRAS
   useEffect(() => {
     if (!user) return;
 
@@ -138,7 +138,7 @@ export default function DashboardScreen() {
     return () => unsubParcelas();
   }, [user]);
 
-  // 🔹 SOMA FIXAS E VARIÁVEIS
+  // SOMA FIXAS E VARIÁVEIS
   useEffect(() => {
     if (!user) return;
 
@@ -174,7 +174,7 @@ export default function DashboardScreen() {
     carregarFixasVariaveis();
   }, [user]);
 
-  // 🔹 Atualiza dados do gráfico
+
   useEffect(() => {
     const categorias = [
       { name: "Fixas", value: calculoFixa, color: "#3b82f6" },
@@ -216,7 +216,7 @@ export default function DashboardScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      {/* Header */}
+      {}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={28} color="#fff" />
@@ -225,7 +225,7 @@ export default function DashboardScreen() {
         <View style={{ width: 28 }} />
       </View>
 
-      {/* Gráfico */}
+      {}
       <View style={styles.chartCard}>
         <Text style={styles.chartTitle}>Categorias</Text>
 
@@ -259,7 +259,7 @@ export default function DashboardScreen() {
             )}
           </View>
 
-          {/* Legenda */}
+          {}
           <View style={styles.legendContainer}>
             {data.map((item, index) => {
               const percent = total ? (item.value / total) * 100 : 0;
@@ -308,7 +308,7 @@ export default function DashboardScreen() {
   );
 }
 
-// estilos inalterados
+
 const styles = StyleSheet.create({
   container: {
     flexGrow: 1,

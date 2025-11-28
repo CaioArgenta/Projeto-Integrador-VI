@@ -14,7 +14,7 @@ import { auth, db } from "../firebaseConfig";
 
 export default function RegistrarEmprestimo({ navigation }) {
   const [titulo, setTitulo] = useState("");
-  const [tipo, setTipo] = useState(1); // 1 = peguei, 2 = emprestei
+  const [tipo, setTipo] = useState(1); 
   const [valorTotal, setValorTotal] = useState("");
   const [parcelas, setParcelas] = useState(1);
   const [conta, setConta] = useState("");
@@ -37,7 +37,7 @@ export default function RegistrarEmprestimo({ navigation }) {
     "Banco do Brasil",
   ];
 
-  // 👉 Função para adicionar meses corretamente
+
   const addMes = (data, meses) => {
     const nova = new Date(data);
     nova.setMonth(nova.getMonth() + meses);
@@ -65,7 +65,7 @@ export default function RegistrarEmprestimo({ navigation }) {
       const emprestimoRef = await addDoc(collection(db, "emprestimos"), {
         usuario_id: user.uid,
         titulo,
-        tipo, // 1 = peguei | 2 = emprestei
+        tipo, 
         valor_total: Number(valorTotal),
         parcelas,
         conta,
@@ -90,7 +90,7 @@ export default function RegistrarEmprestimo({ navigation }) {
           valor_parcela: Number(valorParcela.toFixed(2)),
           vencimento: vencimentoFormatado,
           status: "pendente",
-          tipo, // 👈 numérico também
+          tipo, 
           ativo: 1,
           criado_em: serverTimestamp(),
         });
@@ -106,7 +106,7 @@ export default function RegistrarEmprestimo({ navigation }) {
 
   return (
     <ScrollView style={styles.container}>
-      {/* BOTÃO VOLTAR */}
+      {}
       <TouchableOpacity
         style={styles.voltarButton}
         onPress={() => navigation.goBack()}
@@ -116,7 +116,7 @@ export default function RegistrarEmprestimo({ navigation }) {
 
       <Text style={styles.titulo}>Registrar Empréstimo</Text>
 
-      {/* ÍCONES */}
+      {}
       <Text style={styles.label}>Escolha um ícone</Text>
       <View style={styles.iconeContainer}>
         {icones.map((icone) => (
@@ -161,7 +161,7 @@ export default function RegistrarEmprestimo({ navigation }) {
         </TouchableOpacity>
       </View>
 
-      {/* VALOR */}
+      {}
       <Text style={styles.label}>Valor Total (R$) *</Text>
       <TextInput
         style={styles.input}
@@ -172,7 +172,7 @@ export default function RegistrarEmprestimo({ navigation }) {
         onChangeText={setValorTotal}
       />
 
-      {/* PARCELAS */}
+      {}
       <Text style={styles.label}>Parcelas (1 a 60)</Text>
       <View style={styles.parcelaBox}>
         <TouchableOpacity
@@ -200,7 +200,7 @@ export default function RegistrarEmprestimo({ navigation }) {
         </TouchableOpacity>
       </View>
 
-      {/* BANCOS */}
+      {}
       <Text style={styles.label}>Conta *</Text>
       <View style={styles.bancoContainer}>
         {bancos.map((banco) => (
@@ -217,7 +217,7 @@ export default function RegistrarEmprestimo({ navigation }) {
         ))}
       </View>
 
-      {/* OBSERVAÇÃO */}
+      {}
       <Text style={styles.label}>Observação (opcional)</Text>
       <TextInput
         style={[styles.input, { height: 80 }]}
@@ -228,7 +228,7 @@ export default function RegistrarEmprestimo({ navigation }) {
         multiline
       />
 
-      {/* BOTÃO SALVAR */}
+      {}
       <TouchableOpacity style={styles.botao} onPress={handleSalvarEmprestimo}>
         <Text style={styles.textoBotao}>Salvar Empréstimo</Text>
       </TouchableOpacity>

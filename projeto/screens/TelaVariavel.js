@@ -82,7 +82,7 @@ export default function TabelaDespesasVariavel() {
       collection(db, "despesas_mensais"),
       where("usuario_id", "==", user.uid),
       where("mes_ref", "==", mesRefStr),
-      where("tipo", "==", "variavel") // ALTERADO PARA VARIÁVEL
+      where("tipo", "==", "variavel") 
     );
 
     const unsubscribe = onSnapshot(

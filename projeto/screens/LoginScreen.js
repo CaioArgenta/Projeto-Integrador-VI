@@ -20,7 +20,7 @@ export default function LoginScreen({ navigation }) {
   const [errorMessage, setErrorMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Referência ao campo de senha
+
   const passwordInputRef = useRef(null);
 
   const handleLogin = async () => {
@@ -95,7 +95,7 @@ export default function LoginScreen({ navigation }) {
             value={password}
             onChangeText={setPassword}
             returnKeyType="done"
-            onSubmitEditing={handleLogin} // Enter chama login
+            onSubmitEditing={handleLogin} 
           />
           <TouchableOpacity
             onPress={() => setShowPassword(!showPassword)}
@@ -116,7 +116,7 @@ export default function LoginScreen({ navigation }) {
           <Text style={styles.forgotText}>Esqueceu a senha?</Text>
         </TouchableOpacity>
 
-        {/* Mensagem de erro acima do botão Entrar */}
+        {}
         {errorMessage ? (
           <View style={styles.messageBox}>
             <Text style={styles.errorMessage}>{errorMessage}</Text>

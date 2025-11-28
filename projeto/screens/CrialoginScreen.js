@@ -24,7 +24,7 @@ export default function CrialoginScreen({ navigation }) {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
-  const [messageType, setMessageType] = useState(""); // "error" | "success"
+  const [messageType, setMessageType] = useState(""); 
 
   const handleCreateAccount = async () => {
     setMessage("");
@@ -44,24 +44,23 @@ export default function CrialoginScreen({ navigation }) {
     try {
       setLoading(true);
 
-      // 🔹 Cria o usuário no Firebase Auth
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // 🔹 Define o nome no perfil do Auth
+
       await updateProfile(user, { displayName: name });
 
-      // 🔹 Verifica se o usuário já existe na coleção "usuarios"
       const userRef = doc(db, "usuarios", user.uid);
       const userSnap = await getDoc(userRef);
 
       if (!userSnap.exists()) {
-        // Cria o documento com o mesmo UID do Auth
+ 
         await setDoc(userRef, {
           uid: user.uid,
           nome: name,
           email: email,
           criado_em: new Date(),
+          ativo: 1,
         });
       }
 
@@ -69,12 +68,12 @@ export default function CrialoginScreen({ navigation }) {
       setMessage("Conta criada com sucesso! Agora você pode fazer login.");
       setMessageType("success");
 
-      // 🔹 Volta para a tela de login depois de 2 segundos
+
       setTimeout(() => navigation.goBack(), 2000);
 
     } catch (error) {
       setLoading(false);
-      console.log("🔥 Erro Firebase:", error.code);
+     
 
       let msg = "Ocorreu um erro ao criar a conta.";
       if (error.code === "auth/weak-password") {

@@ -16,9 +16,9 @@ export default function DespesasMensais({ navigation }) {
   const [titulo, setTitulo] = useState("");
   const [valor, setValor] = useState("");
   const [categoria, setCategoria] = useState("");
-  const [tipo, setTipo] = useState("variavel"); // fixa ou variavel
+  const [tipo, setTipo] = useState("variavel"); 
 
-  // Categorias separadas
+ 
   const categoriasFixas = ["Luz","Água","Internet","Aluguel","Telefone","Gás","Condomínio","Outros"];
   const categoriasVariaveis = ["Gasolina","Mercado","Transporte","Lazer","Outros"];
 
@@ -40,7 +40,7 @@ export default function DespesasMensais({ navigation }) {
     try {
       if (!user) return;
 
-      // 1️⃣ Cria registro na tabela mãe "despesa"
+      
       const docRefDespesa = await addDoc(collection(db, "despesa"), {
         usuario_id: user.uid,
         titulo,
@@ -52,10 +52,9 @@ export default function DespesasMensais({ navigation }) {
         criado_em: serverTimestamp(),
       });
 
-      // 2️⃣ Cria registro na tabela mensal "despesas_mensais" usando o ID da despesa mãe
       await addDoc(collection(db, "despesas_mensais"), {
         usuario_id: user.uid,
-        despesa_id: docRefDespesa.id, // 🔹 Referência à despesa mãe
+        despesa_id: docRefDespesa.id, 
         titulo,
         valor: Number(valor),
         categoria,
@@ -108,7 +107,7 @@ export default function DespesasMensais({ navigation }) {
           style={[styles.tipoBotao, tipo === "variavel" && styles.tipoSelecionado]}
           onPress={() => {
             setTipo("variavel");
-            setCategoria(""); // limpa seleção ao mudar tipo
+            setCategoria(""); 
           }}
         >
           <Text style={styles.tipoTexto}>Variável</Text>

@@ -11,7 +11,6 @@ export default function NotificacoesScreen() {
     const user = auth.currentUser;
     if (!user) return;
 
-    // 🔹 Busca as notificações do usuário logado, em ordem decrescente de data
     const q = query(
       collection(db, "notificacoes"),
       where("usuario_id", "==", user.uid),
@@ -33,12 +32,12 @@ export default function NotificacoesScreen() {
   const getCorPorTipo = (tipo) => {
     switch (tipo) {
       case "motivacional":
-        return "#10b981"; // verde
+        return "#10b981"; 
       case "alerta":
-        return "#f87171"; // vermelho
+        return "#f87171"; 
       case "info":
       default:
-        return "#3b82f6"; // azul
+        return "#3b82f6"; 
     }
   };
 
@@ -74,7 +73,7 @@ export default function NotificacoesScreen() {
         ))
       )}
 
-      {/* Mensagem motivacional fixa */}
+      {}
       <View style={[styles.notifCard, { borderLeftColor: "#10b981" }]}>
         <Text style={styles.notifTitle}>💪 Dica do Dia</Text>
         <Text style={styles.notifMessage}>

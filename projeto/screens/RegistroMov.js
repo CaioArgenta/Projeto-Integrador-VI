@@ -45,16 +45,16 @@ export default function RegistroMov() {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
+      {}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back-outline" size={30} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Histórico Completo</Text>
-        <View style={{ width: 30 }} /> {/* espaçamento equilibrado */}
+        <View style={{ width: 30 }} /> {}
       </View>
 
-      {/* Saldo Atual */}
+      {}
       <View style={styles.cardSaldo}>
         <Text style={styles.saldoLabel}>Saldo Atual</Text>
         <Text
@@ -67,7 +67,7 @@ export default function RegistroMov() {
         </Text>
       </View>
 
-      {/* Lista de movimentações */}
+      {}
       {movimentacoes.length === 0 ? (
         <Text style={styles.semMov}>Nenhuma movimentação registrada.</Text>
       ) : (
