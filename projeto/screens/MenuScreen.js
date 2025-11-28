@@ -378,10 +378,8 @@ export default function MenuScreen() {
       <Drawer.Screen name="Registrar Movimentação" component={FormMovimentacao} />
       <Drawer.Screen name="Registrar Compras" component={CompraParcelada} />
       <Drawer.Screen name="Registrar Empréstimos" component={MovEmprest} />
-      <Drawer.Screen name="Planilha de Movimentações" component={PlanilhaMov} />
-      <Drawer.Screen name="Configurações" component={Configuracoes} />
       <Drawer.Screen name="Notificações" component={NotificacoesScreen} />
-      <Drawer.Screen name="Dashboard" component={DashboardScreen} />
+
     </Drawer.Navigator>
   );
 }
